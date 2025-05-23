@@ -40,7 +40,11 @@
 #include "tcpip_adapter.h"
 #endif
 
-#include "audio_pipeline_manager.h" // Include the new header
+
+// gpio
+// 5 station select
+// 16 volume up
+// 17 volume down
 
 static const char *TAG = "INTERNET_RADIO";
 
