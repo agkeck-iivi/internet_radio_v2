@@ -87,7 +87,7 @@ esp_err_t iot_button_new_gpio_device(const button_config_t *button_config, const
     gpio_btn->gpio_num = gpio_cfg->gpio_num;
     gpio_btn->active_level = gpio_cfg->active_level;
     gpio_btn->enable_power_save = gpio_cfg->enable_power_save;
-
+// ok to here
     gpio_config_t gpio_conf = {0};
     gpio_conf.intr_type = GPIO_INTR_DISABLE;
     gpio_conf.mode = GPIO_MODE_INPUT;
@@ -101,8 +101,9 @@ esp_err_t iot_button_new_gpio_device(const button_config_t *button_config, const
             gpio_conf.pull_up_en = GPIO_PULLUP_ENABLE;
         }
     }
+// ok to here
     gpio_config(&gpio_conf);
-
+// failed here
     if (gpio_cfg->enable_power_save) {
 #if CONFIG_PM_POWER_DOWN_PERIPHERAL_IN_LIGHT_SLEEP
         if (!esp_sleep_is_valid_wakeup_gpio(gpio_cfg->gpio_num)) {

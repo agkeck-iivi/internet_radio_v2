@@ -17,16 +17,10 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
-// #include "audio_element.h"
-// #include "audio_pipeline.h"
 #include "audio_pipeline_manager.h" // Include the new header
 #include "audio_event_iface.h"
 #include "audio_common.h"
-// #include "http_stream.h"
 #include "i2s_stream.h"
-// #include "aac_decoder.h"
-// #include "mp3_decoder.h"
-// #include "ogg_decoder.h"
 
 #include "esp_peripherals.h"
 #include "periph_wifi.h"
@@ -40,21 +34,46 @@
 #include "tcpip_adapter.h"
 #endif
 
+#include "iot_button.h"
+#include "button_gpio.h"
+#include "driver/gpio.h"
 
-// gpio
-// 5 station select
-// 16 volume up
-// 17 volume down
 
-static const char *TAG = "INTERNET_RADIO";
+// pinout https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html#header-block
+// GPIO definitions for buttons
+#define GPIO_VOLUME_UP      14
+#define GPIO_VOLUME_DOWN    27
+#define GPIO_STATION_SELECT 12
+#define GPIO_ACTIVE_LOW     0
+
+// Volume control
+#define INITIAL_VOLUME 50
+#define VOLUME_STEP    10
+
+static const char* TAG = "INTERNET_RADIO";
+
+// Static global variables for easier access in callbacks
+static audio_pipeline_components_t audio_pipeline_components = { 0 };
+static int current_station = 0;
+audio_board_handle_t board_handle = NULL;  // make this global during debugging
+static audio_event_iface_handle_t evt = NULL;
+static esp_periph_set_handle_t périph_set = NULL; // Renamed from 'set' to avoid conflict if any
+
+// Button Handles
+static button_handle_t volume_up_btn_handle = NULL;
+static button_handle_t volume_down_btn_handle = NULL;
+static button_handle_t station_select_btn_handle = NULL;
+
+
+
 
 /**
  * @brief Structure to define a radio station's properties.
  */
 typedef struct
 {
-    const char *call_sign; // Station's call sign or name
-    const char *uri;       // Stream URI
+    const char* call_sign; // Station's call sign or name
+    const char* uri;       // Stream URI
     codec_type_t codec;    // Codec type for the stream
 } station_t;
 
@@ -66,44 +85,119 @@ station_t radio_stations[] = {
 
 int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
 
-// reference audo streams: https://www.radiomast.io/reference-streams
-// #define STREAM_URI "http://open.ls.qingting.fm/live/274/64k.m3u8?format=aac"
-// #define STREAM_URI "https://streams.radiomast.io/ref-128k-aaclc-stereo"
+static void volume_down_button_cb(void* arg, void* usr_data) {
+    ESP_LOGI(TAG, "Volume Down Button Pressed");
+    if (board_handle && board_handle->audio_hal) {
+        int current_vol;
+        audio_hal_get_volume(board_handle->audio_hal, &current_vol);
+        current_vol -= VOLUME_STEP;
+        if (current_vol < 0) {
+            current_vol = 0;
+        }
+        audio_hal_set_volume(board_handle->audio_hal, current_vol);
+        ESP_LOGI(TAG, "Volume set to %d", current_vol);
+    }
+}
 
-// These two work for kexp
-// #define STREAM_URI "https://kexp.streamguys1.com/kexp64.aac"
+static void volume_up_button_cb(void* arg, void* usr_data) {
+    ESP_LOGI(TAG, "Volume Up Button Pressed");
+    if (board_handle && board_handle->audio_hal) {
+        int current_vol;
+        audio_hal_get_volume(board_handle->audio_hal, &current_vol);
+        current_vol += VOLUME_STEP;
+        if (current_vol > 100) {
+            current_vol = 100;
+        }
+        audio_hal_set_volume(board_handle->audio_hal, current_vol);
+        ESP_LOGI(TAG, "Volume set to %d", current_vol);
+    }
+}
 
-// #define STREAM_URI "https://kexp.streamguys1.com/kexp160.aac"
-// #define CODEC CODEC_TYPE_AAC
+static void station_select_button_cb(void* arg, void* usr_data) {
+    ESP_LOGI(TAG, "Station Select Button Pressed");
 
-// kbut this didn't work, This brings up a player page
-// #define STREAM_URI  "http://www.radiorethink.com/tuner/?stationCode=kbut&stream=hi"
-// I think that the following is defunct
-// KBUT: https://playerservices.streamtheworld.com/api/livestream-redirect/KBUTFM.mp3
+    ESP_LOGI(TAG, "Destroying current pipeline...");
+    destroy_audio_pipeline(&audio_pipeline_components);
 
-// this looks live: http://26273.live.streamtheworld.com/KBUTFM.mp3
-// open developers tab in browser on player page.  play audio and go to the network tab in the developer's tab to find
-// network address for streaming audio.  it looks like there is an initial GET that returns a redirect to the 26273... server
-// subsequent pause/resume actions get different redirects.
+    current_station = (current_station + 1) % station_count;
+    ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
 
-#define STREAM_URI "http://26273.live.streamtheworld.com/KBUTFM.mp3"
-#define CODEC CODEC_TYPE_MP3
+    esp_err_t ret = create_audio_pipeline(&audio_pipeline_components,
+        radio_stations[current_station].codec,
+        radio_stations[current_station].uri);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s. Error: %d", radio_stations[current_station].call_sign, ret);
+        return;
+    }
 
-// here is a list of servers for kbut: http://playerservices.streamtheworld.com/pls/KBUTFM.pls
+    if (audio_pipeline_components.pipeline && evt) {
+        ESP_LOGI(TAG, "Setting listener for new pipeline");
+        audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
 
-// ksut: the following seems to work without the uuid as well
-// ksut: https://ksut.streamguys1.com/kute?uuid=yflwpj1y
+        ESP_LOGI(TAG, "Starting new audio pipeline");
+        ret = audio_pipeline_run(audio_pipeline_components.pipeline);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to run new audio pipeline. Error: %d", ret);
+            destroy_audio_pipeline(&audio_pipeline_components);
+        }
+        else {
+            ESP_LOGI(TAG, "Successfully switched to station: %s", radio_stations[current_station].call_sign);
+        }
+    }
+    else {
+        ESP_LOGE(TAG, "Pipeline or event handle is NULL after create_audio_pipeline. Cannot start.");
+        if (audio_pipeline_components.pipeline) {
+            destroy_audio_pipeline(&audio_pipeline_components);
+        }
+    }
+}
 
-// OGG
-// #define STREAM_URI "https://streams.radiomast.io/ref-64k-ogg-vorbis-stereo"
-// #define CODEC CODEC_TYPE_OGG
+static void init_buttons(void) {
+    // button_event_args_t event_args = {.long_press.press_time = 0};
+    button_config_t btn_cfg = {
+        .long_press_time = 0, // Use component default
+        .short_press_time = 0, // Use component default
+    };
+
+    // Volume Down Button
+    button_gpio_config_t vol_down_gpio_cfg = { 
+        .gpio_num = GPIO_VOLUME_DOWN, 
+        .active_level = GPIO_ACTIVE_LOW, 
+        .enable_power_save = false, 
+        .disable_pull = false };
+    esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &vol_down_gpio_cfg, &volume_down_btn_handle);
+    if (ret == ESP_OK) {
+        iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK,NULL, volume_down_button_cb, NULL);
+    } else {
+        ESP_LOGE(TAG, "Failed to create volume down button: %s", esp_err_to_name(ret));
+    }
+
+    // Volume Up Button
+    button_gpio_config_t vol_up_gpio_cfg = {.gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW};
+    ret = iot_button_new_gpio_device(&btn_cfg, &vol_up_gpio_cfg, &volume_up_btn_handle);
+    if (ret == ESP_OK) {
+        iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK,NULL, volume_up_button_cb, NULL);
+    } else {
+        ESP_LOGE(TAG, "Failed to create volume up button: %s", esp_err_to_name(ret));
+    }
+
+    // // Station Select Button
+    // button_gpio_config_t station_select_gpio_cfg = {.gpio_num = GPIO_STATION_SELECT, .active_level = GPIO_ACTIVE_LOW};
+    // ret = iot_button_new_gpio_device(&btn_cfg, &station_select_gpio_cfg, &station_select_btn_handle);
+    // if (ret == ESP_OK) {
+    //     iot_button_register_cb(station_select_btn_handle, BUTTON_SINGLE_CLICK,NULL, station_select_button_cb, NULL);
+    // } else {
+    //     ESP_LOGE(TAG, "Failed to create station select button: %s", esp_err_to_name(ret));
+    // }
+}
 
 void app_main(void)
 {
-    // only one pipeline structure, it is reused
-    audio_pipeline_components_t audio_pipeline_components = {0};
-    int current_station = 0;
-
+        int temp_volume;
+    esp_log_level_set("*", ESP_LOG_DEBUG);
+    esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    esp_log_level_set("AUDIO_PIPELINE_MGR", ESP_LOG_DEBUG);
+    // esp_log_level_set("AUDIO_ELEMENT")
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES)
     {
@@ -118,77 +212,72 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+    périph_set = esp_periph_set_init(&periph_cfg); // Assign to static global
     periph_wifi_cfg_t wifi_cfg = {
         .wifi_config.sta.ssid = CONFIG_WIFI_SSID,
         .wifi_config.sta.password = CONFIG_WIFI_PASSWORD,
     };
     esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
-    esp_periph_start(set, wifi_handle);
+    esp_periph_start(périph_set, wifi_handle);
     periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
 
-    esp_log_level_set("*", ESP_LOG_ERROR);
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
 
     ESP_LOGI(TAG, "Start audio codec chip");
-    audio_board_handle_t board_handle = audio_board_init();
+    board_handle = audio_board_init(); // Assign to static global
     audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+    audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
+    audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
 
-    // err = create_audio_pipeline(&audio_pipeline_components, CODEC, STREAM_URI);
-    // if (err != ESP_OK)
-    // {
-    //     ESP_LOGE(TAG, "Failed to create audio pipeline, error: %d", err);
-    //     // Handle error appropriately, e.g., by restarting or halting.
-    //     return; // Exit app_main on failure
-    // }
 
     ESP_LOGI(TAG, "Set up  event listener");
     audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
-
-    // ESP_LOGI(TAG, "Listening event from all elements of pipeline");
-    // audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
+    evt = audio_event_iface_init(&evt_cfg); // Assign to static global
 
     ESP_LOGI(TAG, "Listening event from peripherals");
-    audio_event_iface_set_listener(esp_periph_set_get_event_iface(set), evt);
+    audio_event_iface_set_listener(esp_periph_set_get_event_iface(périph_set), evt);
 
-    // ESP_LOGI(TAG, "Start audio_pipeline");
-    // audio_pipeline_run(audio_pipeline_components.pipeline);
+    ESP_LOGI(TAG, "Initializing buttons");
 
-    ESP_LOGI(TAG, "starting stream: %s", radio_stations[current_station].call_sign);
-    err = create_audio_pipeline(&audio_pipeline_components, radio_stations[current_station].codec, radio_stations[current_station].uri);
-    current_station = (current_station + 1) % station_count;
-    ESP_LOGI(TAG, "Listening event from all elements of pipeline");
-    audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
+    init_buttons();
+
+
+    ESP_LOGI(TAG, "Starting initial stream: %s", radio_stations[current_station].call_sign);
+    err = create_audio_pipeline(&audio_pipeline_components,
+        radio_stations[current_station].codec,
+        radio_stations[current_station].uri);
     if (err != ESP_OK)
     {
-        ESP_LOGE(TAG, "Failed to create audio pipeline, error: %d", err);
-        // Handle error appropriately, e.g., by restarting or halting.
-        return; // Exit app_main on failure
+        ESP_LOGE(TAG, "Failed to create initial audio pipeline, error: %d", err);
+        // Cleanup before returning
+        if (evt) audio_event_iface_destroy(evt);
+        if (périph_set) esp_periph_set_destroy(périph_set);
+        // audio_board_deinit(board_handle); // If applicable
+        return;
     }
+
+    ESP_LOGI(TAG, "After starting audio_pipeline");
+    // volume setting doesn't work here
+
+
+    ESP_LOGI(TAG, "Listening event from all elements of pipeline");
+    audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
 
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
+    // volume doesn't work here
+    // // check that volume is setting
+    // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    // ESP_LOGI(TAG, "Current volume is %d", temp_volume);
+    // temp_volume+=10;
+    // audio_hal_set_volume(board_handle->audio_hal, temp_volume);
+    // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    // ESP_LOGI(TAG, "Current volume is %d", temp_volume);
+
+
     while (1)
     {
-
-        // ESP_LOGI(TAG, "starting stream: %s", radio_stations[current_station].call_sign);
-        // err = create_audio_pipeline(&audio_pipeline_components, radio_stations[current_station].codec, radio_stations[current_station].uri);
-        // current_station = (current_station + 1) % station_count;
-        // ESP_LOGI(TAG, "Listening event from all elements of pipeline");
-        // audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
-        // if (err != ESP_OK)
-        // {
-        //     ESP_LOGE(TAG, "Failed to create audio pipeline, error: %d", err);
-        //     // Handle error appropriately, e.g., by restarting or halting.
-        //     return; // Exit app_main on failure
-        // }
-
-        // ESP_LOGI(TAG, "Start audio_pipeline");
-        // audio_pipeline_run(audio_pipeline_components.pipeline);
-        // vTaskDelay(pdMS_TO_TICKS(1000));
-
         audio_event_iface_msg_t msg;
         esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
         if (ret != ESP_OK)
@@ -197,20 +286,20 @@ void app_main(void)
             continue;
         }
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *)audio_pipeline_components.codec_decoder && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.codec_decoder && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
         {
-            audio_element_info_t music_info = {0};
-            audio_element_getinfo(audio_pipeline_components.codec_decoder, &music_info);
+            audio_element_info_t music_info = { 0 };
+            audio_element_getinfo(audio_pipeline_components.codec_decoder, &music_info); // Make sure codec_decoder is valid
 
             ESP_LOGI(TAG, "[ * ] Receive music info from codec decoder, sample_rates=%d, bits=%d, ch=%d",
-                     music_info.sample_rates, music_info.bits, music_info.channels);
+                music_info.sample_rates, music_info.bits, music_info.channels);
 
             i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
             continue;
         }
 
         /* restart stream when the first pipeline element (http_stream_reader in this case) receives stop event (caused by reading errors) */
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *)audio_pipeline_components.http_stream_reader && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int)msg.data == AEL_STATUS_ERROR_OPEN)
+        if (audio_pipeline_components.http_stream_reader && msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.http_stream_reader && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int)msg.data == AEL_STATUS_ERROR_OPEN)
         {
             ESP_LOGW(TAG, "[ * ] Restart stream");
             audio_pipeline_stop(audio_pipeline_components.pipeline);
@@ -224,22 +313,26 @@ void app_main(void)
         }
     }
 
-    ESP_LOGI(TAG, "Stop audio_pipeline");
-    // Call the new destroy function
+    ESP_LOGI(TAG, "Stopping audio_pipeline");
     destroy_audio_pipeline(&audio_pipeline_components);
 
-    /* The audio_pipeline_terminate within destroy_audio_pipeline handles removing
-     * the listener that was set by audio_pipeline_set_listener.
-     * If other listeners were added elsewhere, they would need separate removal.
-     * For the main pipeline listener, this explicit call is now redundant.
-     * audio_pipeline_remove_listener(audio_pipeline_components.pipeline); // Redundant
-     */
+    ESP_LOGI(TAG, "Deleting buttons");
+    if (volume_up_btn_handle) iot_button_delete(volume_up_btn_handle);
+    if (volume_down_btn_handle) iot_button_delete(volume_down_btn_handle);
+    if (station_select_btn_handle) iot_button_delete(station_select_btn_handle);
 
-    /* Stop all peripherals before removing the listener */
-    esp_periph_set_stop_all(set);
-    audio_event_iface_remove_listener(esp_periph_set_get_event_iface(set), evt);
+    if (périph_set) {
+        esp_periph_set_stop_all(périph_set);
+        if (evt) {
+            audio_event_iface_remove_listener(esp_periph_set_get_event_iface(périph_set), evt);
+        }
+    }
 
-    /* Make sure audio_pipeline_remove_listener & audio_event_iface_remove_listener are called before destroying event_iface */
-    audio_event_iface_destroy(evt);
-    esp_periph_set_destroy(set);
+    if (evt) {
+        audio_event_iface_destroy(evt);
+    }
+    if (périph_set) {
+        esp_periph_set_destroy(périph_set);
+    }
+    // audio_board_deinit(board_handle); // If applicable and not handled by esp_periph_set_destroy
 }

@@ -43,8 +43,12 @@ static int _http_stream_event_handle(http_stream_event_msg_t *msg)
     return ESP_OK;
 }
 
+#include "board.h" // remove after debugging
+extern audio_board_handle_t board_handle; // remove after debugging
+
 esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_type_t codec_type, const char *uri)
 {
+    
     if (components == NULL)
     {
         ESP_LOGE(TAG, "audio_pipeline_components_t pointer is NULL");
@@ -55,14 +59,17 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ESP_LOGE(TAG, "URI is NULL");
         return ESP_ERR_INVALID_ARG;
     }
-    // if the pipeline is currently populated deint the pipeline
-    destroy_audio_pipeline(components);
-    // reset the components
-    components->pipeline = NULL;
-    components->http_stream_reader = NULL;
-    components->codec_decoder = NULL;
-    components->i2s_stream_writer = NULL;
+// board works here
 
+
+    // // if the pipeline is currently populated deint the pipeline
+    // destroy_audio_pipeline(components);
+    // // reset the components
+    // components->pipeline = NULL;
+    // components->http_stream_reader = NULL;
+    // components->codec_decoder = NULL;
+    // components->i2s_stream_writer = NULL;
+ // board works here   
     esp_err_t ret = ESP_OK;
 
     ESP_LOGI(TAG, "Creating audio pipeline for codec type: %s with URI: %s", codec_type_to_string(codec_type), uri);
@@ -88,6 +95,8 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         goto cleanup;
     }
 
+ // board works here
+
 #if defined CONFIG_ESP32_C3_LYRA_V2_BOARD
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_PDM_TX_CFG_DEFAULT();
 #else
@@ -101,6 +110,24 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ret = ESP_FAIL;
         goto cleanup;
     }
+    // i2c doesn't work here
+
+    //reinitialize audio board
+    // audio_board_deinit(board_handle);
+    // board_handle = audio_board_init(); // Assign to static global
+    // audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+
+// board does not work here    
+    // // check that volume is setting
+    int temp_volume = 0;
+    ESP_LOGI(TAG, "Checking inside create_audio_pipeline");
+    audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    ESP_LOGI(TAG, "Current volume is %d", temp_volume);
+    temp_volume+=10;
+    audio_hal_set_volume(board_handle->audio_hal, temp_volume);
+    audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    ESP_LOGI(TAG, "Current volume is %d", temp_volume);
+
 
     switch (codec_type)
     {
