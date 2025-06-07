@@ -38,6 +38,64 @@
 #include "button_gpio.h"
 #include "driver/gpio.h"
 
+static const char* TAG = "INTERNET_RADIO";
+
+// // included for debugging the pipelines
+// #include "sys/queue.h"
+// typedef struct ringbuf_item {
+//     STAILQ_ENTRY(ringbuf_item)  next;
+//     ringbuf_handle_t            rb;
+//     audio_element_handle_t      host_el;
+//     bool                        linked;
+//     bool                        kept_ctx;
+// } ringbuf_item_t;
+
+// typedef STAILQ_HEAD(ringbuf_list, ringbuf_item) ringbuf_list_t;
+
+// typedef struct audio_element_item {
+//     STAILQ_ENTRY(audio_element_item) next;
+//     audio_element_handle_t           el;
+//     bool                             linked;
+//     bool                             kept_ctx;
+//     audio_element_status_t           el_state;
+// } audio_element_item_t;
+
+// typedef STAILQ_HEAD(audio_element_list, audio_element_item) audio_element_list_t;
+
+// struct audio_pipeline {
+//     audio_element_list_t        el_list;
+//     ringbuf_list_t              rb_list;
+//     audio_element_state_t       state;
+//     xSemaphoreHandle            lock;
+//     bool                        linked;
+//     audio_event_iface_handle_t  listener;
+// };
+// static void debug_pipeline_lists(audio_pipeline_handle_t pipeline, int line, const char *func)
+// {
+//     audio_element_item_t *el_item, *el_tmp;
+//     ringbuf_item_t *rb_item, *tmp;
+//     ESP_LOGI(TAG, "FUNC:%s, LINE:%d", func, line);
+//     STAILQ_FOREACH_SAFE(el_item, &pipeline->el_list, next, el_tmp) {
+//         ESP_LOGI(TAG, "el-list: linked:%d, kept:%d, el:%p, %16s, in_rb:%p, out_rb:%p",
+//                  el_item->linked, el_item->kept_ctx,
+//                  el_item->el, audio_element_get_tag(el_item->el),
+//                  audio_element_get_input_ringbuf(el_item->el),
+//                  audio_element_get_output_ringbuf(el_item->el));
+//     }
+//     STAILQ_FOREACH_SAFE(rb_item, &pipeline->rb_list, next, tmp) {
+//         ESP_LOGI(TAG, "rb-list: linked:%d, kept:%d, rb:%p, host_el:%p, %16s", rb_item->linked, rb_item->kept_ctx,
+//                  rb_item->rb, rb_item->host_el,
+//                  rb_item->host_el != NULL ? audio_element_get_tag(rb_item->host_el) : "NULL");
+//     }
+// }
+
+// #define PIPELINE_DEBUG(x) debug_pipeline_lists(x, __LINE__, __func__)
+// // end debugging pipelines code
+
+// Current i2s_stream.h implementation fails with this board
+// The i2c interface works at init time but after starting the i2s stream we can
+// no longer access the volume control 
+// This bug claims a fix is in the works: https://github.com/espressif/esp-idf/issues/14030
 
 // pinout https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html#header-block
 // GPIO definitions for buttons
@@ -47,22 +105,26 @@
 #define GPIO_ACTIVE_LOW     0
 
 // Volume control
-#define INITIAL_VOLUME 50
+#define INITIAL_VOLUME 80
 #define VOLUME_STEP    10
 
-static const char* TAG = "INTERNET_RADIO";
 
 // Static global variables for easier access in callbacks
-static audio_pipeline_components_t audio_pipeline_components = { 0 };
-static int current_station = 0;
+audio_pipeline_components_t audio_pipeline_components = { 0 };
+static int current_station = 1;
 audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
-static esp_periph_set_handle_t périph_set = NULL; // Renamed from 'set' to avoid conflict if any
+static esp_periph_set_handle_t periph_set = NULL;
 
 // Button Handles
 static button_handle_t volume_up_btn_handle = NULL;
 static button_handle_t volume_down_btn_handle = NULL;
 static button_handle_t station_select_btn_handle = NULL;
+
+// Custom event definitions
+#define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
+#define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
+#define CUSTOM_CMD_PRINT_MESSAGE 1
 
 
 
@@ -84,6 +146,29 @@ station_t radio_stations[] = {
 };
 
 int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
+
+// static void send_custom_message(const char* message) {
+//     ESP_LOGI(TAG, "Preparing to send a custom message to evt...");
+//     audio_event_iface_handle_t periph_bus_evt_iface = esp_periph_set_get_event_iface(periph_set);
+//     if (periph_bus_evt_iface) {
+//         audio_event_iface_msg_t custom_msg = {0};
+//         custom_msg.source = CUSTOM_EVENT_SOURCE_ID; // Identify the source
+//         custom_msg.source_type = CUSTOM_EVENT_TYPE_USER;      // Custom type
+//         custom_msg.cmd = CUSTOM_CMD_PRINT_MESSAGE;         // Custom command
+//         custom_msg.data = (void*)message; // Custom data
+//         custom_msg.data_len = strlen((char*)custom_msg.data) + 1;
+//         custom_msg.need_free_data = false; // Data is a string literal
+
+//         esp_err_t send_err = audio_event_iface_sendout(periph_bus_evt_iface, &custom_msg);
+//         if (send_err == ESP_OK) {
+//             ESP_LOGI(TAG, "Custom message sent successfully via peripheral event interface.");
+//         } else {
+//             ESP_LOGE(TAG, "Failed to send custom message: %s", esp_err_to_name(send_err));
+//         }
+//     } else {
+//         ESP_LOGE(TAG, "Could not get peripheral event interface to send custom message.");
+//     }
+// }
 
 static void volume_down_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Volume Down Button Pressed");
@@ -114,15 +199,31 @@ static void volume_up_button_cb(void* arg, void* usr_data) {
 }
 
 static void station_select_button_cb(void* arg, void* usr_data) {
+    esp_err_t ret;
+    
     ESP_LOGI(TAG, "Station Select Button Pressed");
-
+    // ESP_LOGI(TAG, "remove listener from current pipeline"); // this throws error when called the second time.  this means that 
+    // the listener wasn't added after the first button press.
+    // ESP_LOGI(TAG, "Current pipeline: %p", audio_pipeline_components.pipeline);
+    // ret = audio_pipeline_remove_listener(audio_pipeline_components.pipeline);
+    // if (ret != ESP_OK) {
+    //     ESP_LOGE(TAG, "Failed to remove listener from current pipeline. Error: %d", ret);
+    //     return;
+    // }
+    // else {
+    //     ESP_LOGI(TAG, "Listener removed successfully from current pipeline");
+    // }
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
+
+    // events working here
+    // send_custom_message("after destroying current pipeline");
 
     current_station = (current_station + 1) % station_count;
     ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
 
-    esp_err_t ret = create_audio_pipeline(&audio_pipeline_components,
+
+    ret = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
         radio_stations[current_station].uri);
     if (ret != ESP_OK) {
@@ -130,9 +231,17 @@ static void station_select_button_cb(void* arg, void* usr_data) {
         return;
     }
 
+    // events working here
     if (audio_pipeline_components.pipeline && evt) {
+        // setting listener here puts queue in a bad state.
         ESP_LOGI(TAG, "Setting listener for new pipeline");
-        audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
+        // ret = audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
+        // if (ret != ESP_OK) {
+        //     ESP_LOGE(TAG, "Failed to set listener for new audio pipeline. Error: %d", ret);
+        // }
+        // else {
+        //     ESP_LOGI(TAG, "Listener set for new pipeline");
+        // }
 
         ESP_LOGI(TAG, "Starting new audio pipeline");
         ret = audio_pipeline_run(audio_pipeline_components.pipeline);
@@ -160,44 +269,46 @@ static void init_buttons(void) {
     };
 
     // Volume Down Button
-    button_gpio_config_t vol_down_gpio_cfg = { 
-        .gpio_num = GPIO_VOLUME_DOWN, 
-        .active_level = GPIO_ACTIVE_LOW, 
-        .enable_power_save = false, 
+    button_gpio_config_t vol_down_gpio_cfg = {
+        .gpio_num = GPIO_VOLUME_DOWN,
+        .active_level = GPIO_ACTIVE_LOW,
+        .enable_power_save = false,
         .disable_pull = false };
     esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &vol_down_gpio_cfg, &volume_down_btn_handle);
     if (ret == ESP_OK) {
-        iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK,NULL, volume_down_button_cb, NULL);
-    } else {
+        iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_down_button_cb, NULL);
+    }
+    else {
         ESP_LOGE(TAG, "Failed to create volume down button: %s", esp_err_to_name(ret));
     }
 
     // Volume Up Button
-    button_gpio_config_t vol_up_gpio_cfg = {.gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW};
+    button_gpio_config_t vol_up_gpio_cfg = { .gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW };
     ret = iot_button_new_gpio_device(&btn_cfg, &vol_up_gpio_cfg, &volume_up_btn_handle);
     if (ret == ESP_OK) {
-        iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK,NULL, volume_up_button_cb, NULL);
-    } else {
+        iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_up_button_cb, NULL);
+    }
+    else {
         ESP_LOGE(TAG, "Failed to create volume up button: %s", esp_err_to_name(ret));
     }
 
-    // // Station Select Button
-    // button_gpio_config_t station_select_gpio_cfg = {.gpio_num = GPIO_STATION_SELECT, .active_level = GPIO_ACTIVE_LOW};
-    // ret = iot_button_new_gpio_device(&btn_cfg, &station_select_gpio_cfg, &station_select_btn_handle);
-    // if (ret == ESP_OK) {
-    //     iot_button_register_cb(station_select_btn_handle, BUTTON_SINGLE_CLICK,NULL, station_select_button_cb, NULL);
-    // } else {
-    //     ESP_LOGE(TAG, "Failed to create station select button: %s", esp_err_to_name(ret));
-    // }
+    // Station Select Button
+    button_gpio_config_t station_select_gpio_cfg = { .gpio_num = GPIO_STATION_SELECT, .active_level = GPIO_ACTIVE_LOW };
+    ret = iot_button_new_gpio_device(&btn_cfg, &station_select_gpio_cfg, &station_select_btn_handle);
+    if (ret == ESP_OK) {
+        iot_button_register_cb(station_select_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_select_button_cb, NULL);
+    }
+    else {
+        ESP_LOGE(TAG, "Failed to create station select button: %s", esp_err_to_name(ret));
+    }
 }
 
 void app_main(void)
 {
-        int temp_volume;
+    int temp_volume;
     esp_log_level_set("*", ESP_LOG_DEBUG);
     esp_log_level_set(TAG, ESP_LOG_DEBUG);
     esp_log_level_set("AUDIO_PIPELINE_MGR", ESP_LOG_DEBUG);
-    // esp_log_level_set("AUDIO_ELEMENT")
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES)
     {
@@ -212,13 +323,13 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    périph_set = esp_periph_set_init(&periph_cfg); // Assign to static global
+    periph_set = esp_periph_set_init(&periph_cfg); // Assign to static global
     periph_wifi_cfg_t wifi_cfg = {
         .wifi_config.sta.ssid = CONFIG_WIFI_SSID,
         .wifi_config.sta.password = CONFIG_WIFI_PASSWORD,
     };
     esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
-    esp_periph_start(périph_set, wifi_handle);
+    esp_periph_start(periph_set, wifi_handle);
     periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
 
 
@@ -230,15 +341,16 @@ void app_main(void)
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
 
 
+
     ESP_LOGI(TAG, "Set up  event listener");
     audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
     evt = audio_event_iface_init(&evt_cfg); // Assign to static global
 
     ESP_LOGI(TAG, "Listening event from peripherals");
-    audio_event_iface_set_listener(esp_periph_set_get_event_iface(périph_set), evt);
+    audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
+
 
     ESP_LOGI(TAG, "Initializing buttons");
-
     init_buttons();
 
 
@@ -251,29 +363,19 @@ void app_main(void)
         ESP_LOGE(TAG, "Failed to create initial audio pipeline, error: %d", err);
         // Cleanup before returning
         if (evt) audio_event_iface_destroy(evt);
-        if (périph_set) esp_periph_set_destroy(périph_set);
+        if (periph_set) esp_periph_set_destroy(periph_set);
         // audio_board_deinit(board_handle); // If applicable
         return;
     }
 
-    ESP_LOGI(TAG, "After starting audio_pipeline");
-    // volume setting doesn't work here
 
+    // ESP_LOGI(TAG, "Listening event from all elements of pipeline");
+    // audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
 
-    ESP_LOGI(TAG, "Listening event from all elements of pipeline");
-    audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
 
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
-    // volume doesn't work here
-    // // check that volume is setting
-    // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
-    // ESP_LOGI(TAG, "Current volume is %d", temp_volume);
-    // temp_volume+=10;
-    // audio_hal_set_volume(board_handle->audio_hal, temp_volume);
-    // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
-    // ESP_LOGI(TAG, "Current volume is %d", temp_volume);
 
 
     while (1)
@@ -285,18 +387,25 @@ void app_main(void)
             ESP_LOGE(TAG, "[ * ] Event interface error : %d", ret);
             continue;
         }
+        ESP_LOGI(TAG, "Received event from element: %X, command: %d", (int)msg.source, msg.cmd);
 
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.codec_decoder && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-        {
-            audio_element_info_t music_info = { 0 };
-            audio_element_getinfo(audio_pipeline_components.codec_decoder, &music_info); // Make sure codec_decoder is valid
+        // Handle the custom message
+                // if (msg.source_type == CUSTOM_EVENT_TYPE_USER && msg.cmd == CUSTOM_CMD_PRINT_MESSAGE && msg.source == CUSTOM_EVENT_SOURCE_ID) {
+                //     ESP_LOGI(TAG, "[ * ] Received Custom Message: %s", (char*)msg.data);
+                //     continue;
+                // }
 
-            ESP_LOGI(TAG, "[ * ] Receive music info from codec decoder, sample_rates=%d, bits=%d, ch=%d",
-                music_info.sample_rates, music_info.bits, music_info.channels);
+                // if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.codec_decoder && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+                // {
+                //     audio_element_info_t music_info = { 0 };
+                //     audio_element_getinfo(audio_pipeline_components.codec_decoder, &music_info); // Make sure codec_decoder is valid
 
-            i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
-            continue;
-        }
+                //     ESP_LOGI(TAG, "[ * ] Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d",
+                //         music_info.sample_rates, music_info.bits, music_info.channels);
+
+                //     i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+                //     continue;
+                // }
 
         /* restart stream when the first pipeline element (http_stream_reader in this case) receives stop event (caused by reading errors) */
         if (audio_pipeline_components.http_stream_reader && msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.http_stream_reader && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int)msg.data == AEL_STATUS_ERROR_OPEN)
@@ -321,18 +430,18 @@ void app_main(void)
     if (volume_down_btn_handle) iot_button_delete(volume_down_btn_handle);
     if (station_select_btn_handle) iot_button_delete(station_select_btn_handle);
 
-    if (périph_set) {
-        esp_periph_set_stop_all(périph_set);
+    if (periph_set) {
+        esp_periph_set_stop_all(periph_set);
         if (evt) {
-            audio_event_iface_remove_listener(esp_periph_set_get_event_iface(périph_set), evt);
+            audio_event_iface_remove_listener(esp_periph_set_get_event_iface(periph_set), evt);
         }
     }
 
     if (evt) {
         audio_event_iface_destroy(evt);
     }
-    if (périph_set) {
-        esp_periph_set_destroy(périph_set);
+    if (periph_set) {
+        esp_periph_set_destroy(periph_set);
     }
     // audio_board_deinit(board_handle); // If applicable and not handled by esp_periph_set_destroy
 }
