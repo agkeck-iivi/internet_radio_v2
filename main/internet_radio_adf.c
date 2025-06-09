@@ -111,7 +111,7 @@ static const char* TAG = "INTERNET_RADIO";
 
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
-static int current_station = 1;
+static int current_station = 0;
 audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
@@ -141,7 +141,10 @@ typedef struct
 
 station_t radio_stations[] = {
     {"KEXP Seattle", "https://kexp.streamguys1.com/kexp160.aac", CODEC_TYPE_AAC},
-    {"KBUT FM", "http://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
+    {"KBUT Crested Butte", "http://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
+    {"KSUT 4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
+    {"KDUR Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
+    {"KOTO Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
     // Add more stations here
 };
 
