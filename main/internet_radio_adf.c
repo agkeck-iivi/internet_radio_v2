@@ -65,7 +65,7 @@ void LCD_DemoTask(void* param)
             LCD_writeStr(num);
             vTaskDelay(1000 / portTICK_RATE_MS);
         }
-  
+
     }
 }
 
@@ -242,7 +242,7 @@ int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
 
 static void station_up_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
-    
+
     ESP_LOGI(TAG, "Station Up Button Pressed");
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
@@ -280,7 +280,7 @@ static void station_up_button_cb(void* arg, void* usr_data) {
 
 static void station_down_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
-    
+
     ESP_LOGI(TAG, "Station Up Button Pressed");
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
@@ -385,6 +385,8 @@ void app_main(void)
 #endif
 
 
+    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+    // xTaskCreate(&LCD_DemoTask, "Demo Task", 2 * 1024, NULL, 5, NULL);
 
 
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
@@ -443,8 +445,6 @@ void app_main(void)
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
 
-        LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
-    xTaskCreate(&LCD_DemoTask, "Demo Task", 2*1024, NULL, 5, NULL);
 
 
     while (1)
