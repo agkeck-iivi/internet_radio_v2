@@ -1,0 +1,7 @@
+dependencies:
+  cmake_utilities: 0.*
+  idf: '>=4.0'
+description: HD44780 I2C LCD Driver
+repository: https://github.com/panigrah/ESP32-IDF-HD44780.git
+url: https://github.com/panigrah/ESP32-IDF-HD44780
+version: 0.0.3

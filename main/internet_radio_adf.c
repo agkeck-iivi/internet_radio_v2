@@ -38,6 +38,37 @@
 #include "button_gpio.h"
 #include "driver/gpio.h"
 
+
+#include "HD44780.h"  // for lcd 16x2 i2c backpack
+
+#define LCD_ADDR 0x27
+#define SDA_PIN  21
+#define SCL_PIN  22
+#define LCD_COLS 16
+#define LCD_ROWS 2
+
+void LCD_DemoTask(void* param)
+{
+    char num[20];
+    while (true) {
+        LCD_home();
+        LCD_clearScreen();
+        LCD_writeStr("16x2 I2C LCD");
+        vTaskDelay(3000 / portTICK_RATE_MS);
+        LCD_clearScreen();
+        LCD_writeStr("Lets Count 0-10!");
+        vTaskDelay(3000 / portTICK_RATE_MS);
+        LCD_clearScreen();
+        for (int i = 0; i <= 10; i++) {
+            LCD_setCursor(8, 1);
+            sprintf(num, "%d", i);
+            LCD_writeStr(num);
+            vTaskDelay(1000 / portTICK_RATE_MS);
+        }
+  
+    }
+}
+
 static const char* TAG = "INTERNET_RADIO";
 
 // // included for debugging the pipelines
@@ -92,21 +123,28 @@ static const char* TAG = "INTERNET_RADIO";
 // #define PIPELINE_DEBUG(x) debug_pipeline_lists(x, __LINE__, __func__)
 // // end debugging pipelines code
 
+
+// NOTES:
+
 // Current i2s_stream.h implementation fails with this board
 // The i2c interface works at init time but after starting the i2s stream we can
 // no longer access the volume control 
 // This bug claims a fix is in the works: https://github.com/espressif/esp-idf/issues/14030
+// This bug is almost exactly the same behavior as the one I am seeing: https://github.com/espressif/esp-adf/issues/1334
 
 // pinout https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html#header-block
 // GPIO definitions for buttons
-#define GPIO_VOLUME_UP      14
-#define GPIO_VOLUME_DOWN    27
-#define GPIO_STATION_SELECT 12
+
+// lcd 16x2 with i2c backpack and 3.3v power: https://www.buydisplay.com/3-3v-or-5v-lcd-module-16x2-1602-character-display-i2c-arduino-wide-view
+// #define GPIO_VOLUME_UP      14
+// #define GPIO_VOLUME_DOWN    27
+#define GPIO_STATION_DOWN     14
+#define GPIO_STATION_UP     12
 #define GPIO_ACTIVE_LOW     0
 
 // Volume control
-#define INITIAL_VOLUME 80
-#define VOLUME_STEP    10
+#define INITIAL_VOLUME 100
+// #define VOLUME_STEP    10
 
 
 // Static global variables for easier access in callbacks
@@ -117,9 +155,10 @@ static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
 
 // Button Handles
-static button_handle_t volume_up_btn_handle = NULL;
-static button_handle_t volume_down_btn_handle = NULL;
-static button_handle_t station_select_btn_handle = NULL;
+// static button_handle_t volume_up_btn_handle = NULL;
+// static button_handle_t volume_down_btn_handle = NULL;
+static button_handle_t station_down_btn_handle = NULL;
+static button_handle_t station_up_btn_handle = NULL;
 
 // Custom event definitions
 #define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
@@ -173,55 +212,40 @@ int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
 //     }
 // }
 
-static void volume_down_button_cb(void* arg, void* usr_data) {
-    ESP_LOGI(TAG, "Volume Down Button Pressed");
-    if (board_handle && board_handle->audio_hal) {
-        int current_vol;
-        audio_hal_get_volume(board_handle->audio_hal, &current_vol);
-        current_vol -= VOLUME_STEP;
-        if (current_vol < 0) {
-            current_vol = 0;
-        }
-        audio_hal_set_volume(board_handle->audio_hal, current_vol);
-        ESP_LOGI(TAG, "Volume set to %d", current_vol);
-    }
-}
+// static void volume_down_button_cb(void* arg, void* usr_data) {
+//     ESP_LOGI(TAG, "Volume Down Button Pressed");
+//     if (board_handle && board_handle->audio_hal) {
+//         int current_vol;
+//         audio_hal_get_volume(board_handle->audio_hal, &current_vol);
+//         current_vol -= VOLUME_STEP;
+//         if (current_vol < 0) {
+//             current_vol = 0;
+//         }
+//         audio_hal_set_volume(board_handle->audio_hal, current_vol);
+//         ESP_LOGI(TAG, "Volume set to %d", current_vol);
+//     }
+// }
 
-static void volume_up_button_cb(void* arg, void* usr_data) {
-    ESP_LOGI(TAG, "Volume Up Button Pressed");
-    if (board_handle && board_handle->audio_hal) {
-        int current_vol;
-        audio_hal_get_volume(board_handle->audio_hal, &current_vol);
-        current_vol += VOLUME_STEP;
-        if (current_vol > 100) {
-            current_vol = 100;
-        }
-        audio_hal_set_volume(board_handle->audio_hal, current_vol);
-        ESP_LOGI(TAG, "Volume set to %d", current_vol);
-    }
-}
+// static void volume_up_button_cb(void* arg, void* usr_data) {
+//     ESP_LOGI(TAG, "Volume Up Button Pressed");
+//     if (board_handle && board_handle->audio_hal) {
+//         int current_vol;
+//         audio_hal_get_volume(board_handle->audio_hal, &current_vol);
+//         current_vol += VOLUME_STEP;
+//         if (current_vol > 100) {
+//             current_vol = 100;
+//         }
+//         audio_hal_set_volume(board_handle->audio_hal, current_vol);
+//         ESP_LOGI(TAG, "Volume set to %d", current_vol);
+//     }
+// }
 
-static void station_select_button_cb(void* arg, void* usr_data) {
+static void station_up_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
     
-    ESP_LOGI(TAG, "Station Select Button Pressed");
-    // ESP_LOGI(TAG, "remove listener from current pipeline"); // this throws error when called the second time.  this means that 
-    // the listener wasn't added after the first button press.
-    // ESP_LOGI(TAG, "Current pipeline: %p", audio_pipeline_components.pipeline);
-    // ret = audio_pipeline_remove_listener(audio_pipeline_components.pipeline);
-    // if (ret != ESP_OK) {
-    //     ESP_LOGE(TAG, "Failed to remove listener from current pipeline. Error: %d", ret);
-    //     return;
-    // }
-    // else {
-    //     ESP_LOGI(TAG, "Listener removed successfully from current pipeline");
-    // }
+    ESP_LOGI(TAG, "Station Up Button Pressed");
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
-
-    // events working here
-    // send_custom_message("after destroying current pipeline");
-
     current_station = (current_station + 1) % station_count;
     ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
 
@@ -234,18 +258,46 @@ static void station_select_button_cb(void* arg, void* usr_data) {
         return;
     }
 
-    // events working here
     if (audio_pipeline_components.pipeline && evt) {
-        // setting listener here puts queue in a bad state.
         ESP_LOGI(TAG, "Setting listener for new pipeline");
-        // ret = audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
-        // if (ret != ESP_OK) {
-        //     ESP_LOGE(TAG, "Failed to set listener for new audio pipeline. Error: %d", ret);
-        // }
-        // else {
-        //     ESP_LOGI(TAG, "Listener set for new pipeline");
-        // }
+        ESP_LOGI(TAG, "Starting new audio pipeline");
+        ret = audio_pipeline_run(audio_pipeline_components.pipeline);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to run new audio pipeline. Error: %d", ret);
+            destroy_audio_pipeline(&audio_pipeline_components);
+        }
+        else {
+            ESP_LOGI(TAG, "Successfully switched to station: %s", radio_stations[current_station].call_sign);
+        }
+    }
+    else {
+        ESP_LOGE(TAG, "Pipeline or event handle is NULL after create_audio_pipeline. Cannot start.");
+        if (audio_pipeline_components.pipeline) {
+            destroy_audio_pipeline(&audio_pipeline_components);
+        }
+    }
+}
 
+static void station_down_button_cb(void* arg, void* usr_data) {
+    esp_err_t ret;
+    
+    ESP_LOGI(TAG, "Station Up Button Pressed");
+    ESP_LOGI(TAG, "Destroying current pipeline...");
+    destroy_audio_pipeline(&audio_pipeline_components);
+    current_station = (current_station + station_count - 1) % station_count;
+    ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
+
+
+    ret = create_audio_pipeline(&audio_pipeline_components,
+        radio_stations[current_station].codec,
+        radio_stations[current_station].uri);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s. Error: %d", radio_stations[current_station].call_sign, ret);
+        return;
+    }
+
+    if (audio_pipeline_components.pipeline && evt) {
+        ESP_LOGI(TAG, "Setting listener for new pipeline");
         ESP_LOGI(TAG, "Starting new audio pipeline");
         ret = audio_pipeline_run(audio_pipeline_components.pipeline);
         if (ret != ESP_OK) {
@@ -272,37 +324,45 @@ static void init_buttons(void) {
     };
 
     // Volume Down Button
-    button_gpio_config_t vol_down_gpio_cfg = {
-        .gpio_num = GPIO_VOLUME_DOWN,
-        .active_level = GPIO_ACTIVE_LOW,
-        .enable_power_save = false,
-        .disable_pull = false };
-    esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &vol_down_gpio_cfg, &volume_down_btn_handle);
-    if (ret == ESP_OK) {
-        iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_down_button_cb, NULL);
-    }
-    else {
-        ESP_LOGE(TAG, "Failed to create volume down button: %s", esp_err_to_name(ret));
-    }
+    // button_gpio_config_t vol_down_gpio_cfg = {
+    //     .gpio_num = GPIO_VOLUME_DOWN,
+    //     .active_level = GPIO_ACTIVE_LOW,
+    //     .enable_power_save = false,
+    //     .disable_pull = false };
+    // esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &vol_down_gpio_cfg, &volume_down_btn_handle);
+    // if (ret == ESP_OK) {
+    //     iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_down_button_cb, NULL);
+    // }
+    // else {
+    //     ESP_LOGE(TAG, "Failed to create volume down button: %s", esp_err_to_name(ret));
+    // }
 
-    // Volume Up Button
-    button_gpio_config_t vol_up_gpio_cfg = { .gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW };
-    ret = iot_button_new_gpio_device(&btn_cfg, &vol_up_gpio_cfg, &volume_up_btn_handle);
-    if (ret == ESP_OK) {
-        iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_up_button_cb, NULL);
-    }
-    else {
-        ESP_LOGE(TAG, "Failed to create volume up button: %s", esp_err_to_name(ret));
-    }
+    // // Volume Up Button
+    // button_gpio_config_t vol_up_gpio_cfg = { .gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW };
+    // ret = iot_button_new_gpio_device(&btn_cfg, &vol_up_gpio_cfg, &volume_up_btn_handle);
+    // if (ret == ESP_OK) {
+    //     iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_up_button_cb, NULL);
+    // }
+    // else {
+    //     ESP_LOGE(TAG, "Failed to create volume up button: %s", esp_err_to_name(ret));
+    // }
 
-    // Station Select Button
-    button_gpio_config_t station_select_gpio_cfg = { .gpio_num = GPIO_STATION_SELECT, .active_level = GPIO_ACTIVE_LOW };
-    ret = iot_button_new_gpio_device(&btn_cfg, &station_select_gpio_cfg, &station_select_btn_handle);
+    // Station Up Button
+    button_gpio_config_t station_up_gpio_cfg = { .gpio_num = GPIO_STATION_UP, .active_level = GPIO_ACTIVE_LOW };
+    esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &station_up_gpio_cfg, &station_up_btn_handle);
     if (ret == ESP_OK) {
-        iot_button_register_cb(station_select_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_select_button_cb, NULL);
+        iot_button_register_cb(station_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_up_button_cb, NULL);
     }
     else {
-        ESP_LOGE(TAG, "Failed to create station select button: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to create station up button: %s", esp_err_to_name(ret));
+    }
+    button_gpio_config_t station_down_gpio_cfg = { .gpio_num = GPIO_STATION_DOWN, .active_level = GPIO_ACTIVE_LOW };
+    ret = iot_button_new_gpio_device(&btn_cfg, &station_down_gpio_cfg, &station_down_btn_handle);
+    if (ret == ESP_OK) {
+        iot_button_register_cb(station_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_down_button_cb, NULL);
+    }
+    else {
+        ESP_LOGE(TAG, "Failed to create station down button: %s", esp_err_to_name(ret));
     }
 }
 
@@ -323,6 +383,9 @@ void app_main(void)
 #else
     tcpip_adapter_init();
 #endif
+
+
+
 
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
@@ -380,6 +443,9 @@ void app_main(void)
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
 
+        LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+    xTaskCreate(&LCD_DemoTask, "Demo Task", 2*1024, NULL, 5, NULL);
+
 
     while (1)
     {
@@ -429,9 +495,9 @@ void app_main(void)
     destroy_audio_pipeline(&audio_pipeline_components);
 
     ESP_LOGI(TAG, "Deleting buttons");
-    if (volume_up_btn_handle) iot_button_delete(volume_up_btn_handle);
-    if (volume_down_btn_handle) iot_button_delete(volume_down_btn_handle);
-    if (station_select_btn_handle) iot_button_delete(station_select_btn_handle);
+    // if (volume_up_btn_handle) iot_button_delete(volume_up_btn_handle);
+    // if (volume_down_btn_handle) iot_button_delete(volume_down_btn_handle);
+    if (station_up_btn_handle) iot_button_delete(station_up_btn_handle);
 
     if (periph_set) {
         esp_periph_set_stop_all(periph_set);

@@ -2,13 +2,14 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.espIdfPath": "/home/agkeck/esp/esp-idf",
   "idf.toolsPath": "/home/agkeck/.espressif",
-  "idf.pythonInstallPath": "/usr/bin/python3",
+  "idf.pythonInstallPath": "/usr/bin/python",
   "idf.port": "/dev/ttyUSB0",
   "idf.flashType": "UART",
   "files.associations": {
     "esp_netif.h": "c",
     "aac_decoder.h": "c",
     "button_gpio.h": "c",
-    "audio_common.h": "c"
+    "audio_common.h": "c",
+    "hd44780.h": "c"
   }
 }
