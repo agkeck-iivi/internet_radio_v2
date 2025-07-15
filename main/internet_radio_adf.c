@@ -369,9 +369,9 @@ static void init_buttons(void) {
 void app_main(void)
 {
     int temp_volume;
-    esp_log_level_set("*", ESP_LOG_DEBUG);
-    esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    esp_log_level_set("AUDIO_PIPELINE_MGR", ESP_LOG_DEBUG);
+    // esp_log_level_set("*", ESP_LOG_DEBUG);
+    // esp_log_level_set(TAG, ESP_LOG_DEBUG);
+    // esp_log_level_set("AUDIO_PIPELINE_MGR", ESP_LOG_DEBUG);
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES)
     {
@@ -383,10 +383,6 @@ void app_main(void)
 #else
     tcpip_adapter_init();
 #endif
-
-
-    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
-    // xTaskCreate(&LCD_DemoTask, "Demo Task", 2 * 1024, NULL, 5, NULL);
 
 
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
@@ -444,6 +440,10 @@ void app_main(void)
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
+    ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
+    LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+    ESP_LOGI(TAG, "LCD initialized, starting demo task");
+    xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
 
 
 
