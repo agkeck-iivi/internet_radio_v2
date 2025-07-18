@@ -12,6 +12,7 @@
     "audio_common.h": "c",
     "hd44780.h": "c",
     "i2c_master.h": "c",
-    "board_def.h": "c"
+    "board_def.h": "c",
+    "es8388.h": "c"
   }
 }

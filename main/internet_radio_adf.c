@@ -59,12 +59,12 @@ void LCD_DemoTask(void* param)
         LCD_writeStr("Lets Count 0-10!");
         vTaskDelay(3000 / portTICK_RATE_MS);
         LCD_clearScreen();
-        for (int i = 0; i <= 10; i++) {
-            LCD_setCursor(8, 1);
-            sprintf(num, "%d", i);
-            LCD_writeStr(num);
-            vTaskDelay(1000 / portTICK_RATE_MS);
-        }
+        // for (int i = 0; i <= 10; i++) {
+        //     LCD_setCursor(8, 1);
+        //     sprintf(num, "%d", i);
+        //     LCD_writeStr(num);
+        //     vTaskDelay(1000 / portTICK_RATE_MS);
+        // }
 
     }
 }
