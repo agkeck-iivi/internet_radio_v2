@@ -1,7 +1,8 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.espIdfPath": "/home/agkeck/esp/esp-idf",
-  "idf.toolsPath": "/home/agkeck/.espressif",
+  "idf.espIdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp_idf/v5.5-rc1/esp-idf",
+  "idf.toolsPath": "/home/agkeck/esp/esp-idf_v5_5/tools",
+  // "idf.espAdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp-adf/", // agk added this line  it didn't seem to set the path correctly
   "idf.pythonInstallPath": "/usr/bin/python",
   "idf.port": "/dev/ttyUSB0",
   "idf.flashType": "UART",
@@ -13,6 +14,9 @@
     "hd44780.h": "c",
     "i2c_master.h": "c",
     "board_def.h": "c",
-    "es8388.h": "c"
+    "es8388.h": "c",
+    "audio_pipeline_manager.h": "c",
+    "lcd1602.h": "c",
+    "ratio": "c"
   }
 }

@@ -117,7 +117,6 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ret = ESP_FAIL;
         goto cleanup;
     }
-    // i2c doesn't work here
 
 // board does not work here    
 

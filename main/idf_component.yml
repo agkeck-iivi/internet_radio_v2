@@ -9,3 +9,4 @@ dependencies:
     - if: target in [esp32p4]
   espressif/button: ^4.1.3
   panigrah/esp32-idf-hd44780: ^0.0.3
+  zorxx/lcd1602: ^1.2.0

@@ -39,7 +39,7 @@
 #include "driver/gpio.h"
 
 
-#include "HD44780.h"  // for lcd 16x2 i2c backpack
+// #include "HD44780.h"  // for lcd 16x2 i2c backpack
 
 #define LCD_ADDR 0x27
 #define SDA_PIN  21
@@ -47,24 +47,77 @@
 #define LCD_COLS 16
 #define LCD_ROWS 2
 
+#include "lcd1602/lcd1602.h"
+
+
+// note: the arduino library for reset sends 0x03 3 times, then 0x02 once
+//  0x03 wait 4500 us 0x03 wait 4500 us 0x03 wait 150 us 0x02
+// this library only sends it twice.
+// one of many resources: https://web.alfredstate.edu/faculty/weimandn/lcd/lcd_initialization/lcd_initialization_index.html
+
+
+
+// void LCD_DemoTask(void* param)
+// {
+//     char num[20];
+//     while (true) {
+//         // LCD_reset();
+//         LCD_home();
+//         LCD_clearScreen();
+//         LCD_writeStr("16x2 I2C LCD");
+//         vTaskDelay(1000 / portTICK_RATE_MS);
+//         LCD_clearScreen();
+//         LCD_writeStr("Lets Count 0-10!");
+//         vTaskDelay(1000 / portTICK_RATE_MS);
+//         LCD_clearScreen();
+//         // for (int i = 0; i <= 10; i++) {
+//         //     LCD_setCursor(8, 1);
+//         //     sprintf(num, "%d", i);
+//         //     LCD_writeStr(num);
+//         //     vTaskDelay(1000 / portTICK_RATE_MS);
+//         // }
+
+//     }
+// }
+
+//    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+static lcd1602_context* ctx = NULL; // Global context for LCD
+
 void LCD_DemoTask(void* param)
 {
+    const char* TAG = "LCD_demo";
     char num[20];
+    int i=0;
     while (true) {
-        LCD_home();
-        LCD_clearScreen();
-        LCD_writeStr("16x2 I2C LCD");
-        vTaskDelay(3000 / portTICK_RATE_MS);
-        LCD_clearScreen();
-        LCD_writeStr("Lets Count 0-10!");
-        vTaskDelay(3000 / portTICK_RATE_MS);
-        LCD_clearScreen();
-        // for (int i = 0; i <= 10; i++) {
-        //     LCD_setCursor(8, 1);
-        //     sprintf(num, "%d", i);
-        //     LCD_writeStr(num);
-        //     vTaskDelay(1000 / portTICK_RATE_MS);
-        // }
+        // LCD_reset();
+        int res;
+        res = lcd1602_reset(ctx);
+        if(res != 0)
+        {
+            ESP_LOGE(TAG, "Failed to reset LCD: %d", res);
+        }
+        res = lcd1602_clear(ctx);
+        lcd1602_string(ctx, "count = ");
+        lcd1602_set_cursor(ctx, 1, 0);
+        sprintf(num, "%d", i++);
+        lcd1602_string(ctx, num);
+        lcd1602_set_display(ctx, true, false, false);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
+            // LCD_home();
+            // LCD_clearScreen();
+            // LCD_writeStr("16x2 I2C LCD");
+            // vTaskDelay(1000 / portTICK_RATE_MS);
+            // LCD_clearScreen();
+            // LCD_writeStr("Lets Count 0-10!");
+            // vTaskDelay(1000 / portTICK_RATE_MS);
+            // LCD_clearScreen();
+            // for (int i = 0; i <= 10; i++) {
+            //     LCD_setCursor(8, 1);
+            //     sprintf(num, "%d", i);
+            //     LCD_writeStr(num);
+            //     vTaskDelay(1000 / portTICK_RATE_MS);
+            // }
 
     }
 }
@@ -110,7 +163,7 @@ static const char* TAG = "INTERNET_RADIO";
 //         ESP_LOGI(TAG, "el-list: linked:%d, kept:%d, el:%p, %16s, in_rb:%p, out_rb:%p",
 //                  el_item->linked, el_item->kept_ctx,
 //                  el_item->el, audio_element_get_tag(el_item->el),
-//                  audio_element_get_input_ringbuf(el_item->el),
+//                  audio_element_g)et_input_ringbuf(el_item->el),
 //                  audio_element_get_output_ringbuf(el_item->el));
 //     }
 //     STAILQ_FOREACH_SAFE(rb_item, &pipeline->rb_list, next, tmp) {
@@ -132,10 +185,18 @@ static const char* TAG = "INTERNET_RADIO";
 // This bug claims a fix is in the works: https://github.com/espressif/esp-idf/issues/14030
 // This bug is almost exactly the same behavior as the one I am seeing: https://github.com/espressif/esp-adf/issues/1334
 
+// low pass filter: 100 \Omega, 22 pF with 1K pullup resistor works for about 15 minutes (900 writes)
+// spreadsheet with rc values for various filters: https://docs.google.com/spreadsheets/d/1gqpgkPefZ_oJ2fmMdUvjdyCvKpkRdYS4wy-v37hEgWs/edit?gid=0#gid=0
+
+
 // pinout https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html#header-block
 // GPIO definitions for buttons
 
 // lcd 16x2 with i2c backpack and 3.3v power: https://www.buydisplay.com/3-3v-or-5v-lcd-module-16x2-1602-character-display-i2c-arduino-wide-view
+
+// lcd with boost-buck converter: https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/3584/MCCOG21605D6W-BNMLWI.pdf
+
+
 // #define GPIO_VOLUME_UP      14
 // #define GPIO_VOLUME_DOWN    27
 #define GPIO_STATION_DOWN     14
@@ -441,11 +502,44 @@ void app_main(void)
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
     ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
-    LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
-    ESP_LOGI(TAG, "LCD initialized, starting demo task");
+    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+    // ESP_LOGI(TAG, "LCD initialized, starting demo task");
+    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
+
+    // Initialize the LCD using zorxx's lcd1602 library
+    // #define ESP_I2C_PORT    -1 // Use default I2C port
+#define ESP_I2C_SDA     GPIO_NUM_21
+#define ESP_I2C_SCL     GPIO_NUM_22
+#define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
+
+    i2c_lowlevel_config config = { 0 };
+    static i2c_master_bus_handle_t i2c_bus;
+    i2c_master_bus_config_t bus_cfg = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = -1, // Use default I2C port
+        .sda_io_num = ESP_I2C_SDA,
+        .scl_io_num = ESP_I2C_SCL,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize I2C bus");
+    }
+    else
+        config.bus = &i2c_bus;
+    ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+    //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+    if (NULL != ctx)
+    {
+        // lcd1602_set_backlight(ctx, false);
+        lcd1602_string(ctx, "foo Software");
+        lcd1602_set_cursor(ctx, 1, 0);
+        lcd1602_string(ctx, "LCD1602 Library");
+        lcd1602_set_display(ctx, true, false, false);
+        //   lcd1602_deinit(ctx);
+    }
     xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
-
-
 
     while (1)
     {
