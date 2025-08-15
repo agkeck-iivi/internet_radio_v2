@@ -57,28 +57,6 @@
 
 
 
-// void LCD_DemoTask(void* param)
-// {
-//     char num[20];
-//     while (true) {
-//         // LCD_reset();
-//         LCD_home();
-//         LCD_clearScreen();
-//         LCD_writeStr("16x2 I2C LCD");
-//         vTaskDelay(1000 / portTICK_RATE_MS);
-//         LCD_clearScreen();
-//         LCD_writeStr("Lets Count 0-10!");
-//         vTaskDelay(1000 / portTICK_RATE_MS);
-//         LCD_clearScreen();
-//         // for (int i = 0; i <= 10; i++) {
-//         //     LCD_setCursor(8, 1);
-//         //     sprintf(num, "%d", i);
-//         //     LCD_writeStr(num);
-//         //     vTaskDelay(1000 / portTICK_RATE_MS);
-//         // }
-
-//     }
-// }
 
 //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
 static lcd1602_context* ctx = NULL; // Global context for LCD
