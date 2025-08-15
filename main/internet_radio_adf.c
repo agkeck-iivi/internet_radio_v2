@@ -124,57 +124,6 @@ void LCD_DemoTask(void* param)
 
 static const char* TAG = "INTERNET_RADIO";
 
-// // included for debugging the pipelines
-// #include "sys/queue.h"
-// typedef struct ringbuf_item {
-//     STAILQ_ENTRY(ringbuf_item)  next;
-//     ringbuf_handle_t            rb;
-//     audio_element_handle_t      host_el;
-//     bool                        linked;
-//     bool                        kept_ctx;
-// } ringbuf_item_t;
-
-// typedef STAILQ_HEAD(ringbuf_list, ringbuf_item) ringbuf_list_t;
-
-// typedef struct audio_element_item {
-//     STAILQ_ENTRY(audio_element_item) next;
-//     audio_element_handle_t           el;
-//     bool                             linked;
-//     bool                             kept_ctx;
-//     audio_element_status_t           el_state;
-// } audio_element_item_t;
-
-// typedef STAILQ_HEAD(audio_element_list, audio_element_item) audio_element_list_t;
-
-// struct audio_pipeline {
-//     audio_element_list_t        el_list;
-//     ringbuf_list_t              rb_list;
-//     audio_element_state_t       state;
-//     xSemaphoreHandle            lock;
-//     bool                        linked;
-//     audio_event_iface_handle_t  listener;
-// };
-// static void debug_pipeline_lists(audio_pipeline_handle_t pipeline, int line, const char *func)
-// {
-//     audio_element_item_t *el_item, *el_tmp;
-//     ringbuf_item_t *rb_item, *tmp;
-//     ESP_LOGI(TAG, "FUNC:%s, LINE:%d", func, line);
-//     STAILQ_FOREACH_SAFE(el_item, &pipeline->el_list, next, el_tmp) {
-//         ESP_LOGI(TAG, "el-list: linked:%d, kept:%d, el:%p, %16s, in_rb:%p, out_rb:%p",
-//                  el_item->linked, el_item->kept_ctx,
-//                  el_item->el, audio_element_get_tag(el_item->el),
-//                  audio_element_g)et_input_ringbuf(el_item->el),
-//                  audio_element_get_output_ringbuf(el_item->el));
-//     }
-//     STAILQ_FOREACH_SAFE(rb_item, &pipeline->rb_list, next, tmp) {
-//         ESP_LOGI(TAG, "rb-list: linked:%d, kept:%d, rb:%p, host_el:%p, %16s", rb_item->linked, rb_item->kept_ctx,
-//                  rb_item->rb, rb_item->host_el,
-//                  rb_item->host_el != NULL ? audio_element_get_tag(rb_item->host_el) : "NULL");
-//     }
-// }
-
-// #define PIPELINE_DEBUG(x) debug_pipeline_lists(x, __LINE__, __func__)
-// // end debugging pipelines code
 
 
 // NOTES:
@@ -249,57 +198,6 @@ station_t radio_stations[] = {
 };
 
 int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
-
-// static void send_custom_message(const char* message) {
-//     ESP_LOGI(TAG, "Preparing to send a custom message to evt...");
-//     audio_event_iface_handle_t periph_bus_evt_iface = esp_periph_set_get_event_iface(periph_set);
-//     if (periph_bus_evt_iface) {
-//         audio_event_iface_msg_t custom_msg = {0};
-//         custom_msg.source = CUSTOM_EVENT_SOURCE_ID; // Identify the source
-//         custom_msg.source_type = CUSTOM_EVENT_TYPE_USER;      // Custom type
-//         custom_msg.cmd = CUSTOM_CMD_PRINT_MESSAGE;         // Custom command
-//         custom_msg.data = (void*)message; // Custom data
-//         custom_msg.data_len = strlen((char*)custom_msg.data) + 1;
-//         custom_msg.need_free_data = false; // Data is a string literal
-
-//         esp_err_t send_err = audio_event_iface_sendout(periph_bus_evt_iface, &custom_msg);
-//         if (send_err == ESP_OK) {
-//             ESP_LOGI(TAG, "Custom message sent successfully via peripheral event interface.");
-//         } else {
-//             ESP_LOGE(TAG, "Failed to send custom message: %s", esp_err_to_name(send_err));
-//         }
-//     } else {
-//         ESP_LOGE(TAG, "Could not get peripheral event interface to send custom message.");
-//     }
-// }
-
-// static void volume_down_button_cb(void* arg, void* usr_data) {
-//     ESP_LOGI(TAG, "Volume Down Button Pressed");
-//     if (board_handle && board_handle->audio_hal) {
-//         int current_vol;
-//         audio_hal_get_volume(board_handle->audio_hal, &current_vol);
-//         current_vol -= VOLUME_STEP;
-//         if (current_vol < 0) {
-//             current_vol = 0;
-//         }
-//         audio_hal_set_volume(board_handle->audio_hal, current_vol);
-//         ESP_LOGI(TAG, "Volume set to %d", current_vol);
-//     }
-// }
-
-// static void volume_up_button_cb(void* arg, void* usr_data) {
-//     ESP_LOGI(TAG, "Volume Up Button Pressed");
-//     if (board_handle && board_handle->audio_hal) {
-//         int current_vol;
-//         audio_hal_get_volume(board_handle->audio_hal, &current_vol);
-//         current_vol += VOLUME_STEP;
-//         if (current_vol > 100) {
-//             current_vol = 100;
-//         }
-//         audio_hal_set_volume(board_handle->audio_hal, current_vol);
-//         ESP_LOGI(TAG, "Volume set to %d", current_vol);
-//     }
-// }
 
 static void station_up_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
