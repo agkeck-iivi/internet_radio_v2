@@ -60,6 +60,17 @@
 
 //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
 static lcd1602_context* ctx = NULL; // Global context for LCD
+    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+    // ESP_LOGI(TAG, "LCD initialized, starting demo task");
+    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
+
+    // Initialize the LCD using zorxx's lcd1602 library
+    // #define ESP_I2C_PORT    -1 // Use default I2C port
+#define ESP_I2C_SDA     GPIO_NUM_21
+#define ESP_I2C_SCL     GPIO_NUM_22
+#define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
+
+static    i2c_lowlevel_config config = { 0 };
 
 void LCD_DemoTask(void* param)
 {
@@ -69,6 +80,27 @@ void LCD_DemoTask(void* param)
     while (true) {
         // LCD_reset();
         int res;
+        // can't seem to keep the lcd 1602 working so we will continually deint and reinit it.
+        // lcd1602_deinit(ctx);
+        // ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+        // deint and reint didn't help.  toggleing power does.
+
+        // let's see if backlight power is the issue.
+        // lcd1602_set_backlight(ctx, false);
+        // lcd1602_set_backlight(ctx, true);
+        // that didn't work.
+
+        // try turning the display off and on
+        // lcd1602_set_display(ctx, true, false, false);
+        // lcd1602_set_display(ctx, false, false, false);
+        // lcd1602_set_display(ctx, true, false, false);
+
+
+    // it looks like just wiggling the power supply leads to the lcd1602 working again.
+    // so maybe a low pass filter on the power line will help.
+    // tried a 0.1 uF cap from Vcc to ground, didn't help.
+
+
         res = lcd1602_reset(ctx);
         if(res != 0)
         {
@@ -378,17 +410,6 @@ void app_main(void)
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
     ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
-    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
-    // ESP_LOGI(TAG, "LCD initialized, starting demo task");
-    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
-
-    // Initialize the LCD using zorxx's lcd1602 library
-    // #define ESP_I2C_PORT    -1 // Use default I2C port
-#define ESP_I2C_SDA     GPIO_NUM_21
-#define ESP_I2C_SCL     GPIO_NUM_22
-#define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
-
-    i2c_lowlevel_config config = { 0 };
     static i2c_master_bus_handle_t i2c_bus;
     i2c_master_bus_config_t bus_cfg = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
@@ -409,9 +430,9 @@ void app_main(void)
     if (NULL != ctx)
     {
         // lcd1602_set_backlight(ctx, false);
-        lcd1602_string(ctx, "foo Software");
-        lcd1602_set_cursor(ctx, 1, 0);
-        lcd1602_string(ctx, "LCD1602 Library");
+        // lcd1602_string(ctx, "foo Software");
+        // lcd1602_set_cursor(ctx, 1, 0);
+        // lcd1602_string(ctx, "LCD1602 Library");
         lcd1602_set_display(ctx, true, false, false);
         //   lcd1602_deinit(ctx);
     }
