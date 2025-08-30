@@ -17,6 +17,7 @@
     "es8388.h": "c",
     "audio_pipeline_manager.h": "c",
     "lcd1602.h": "c",
-    "ratio": "c"
+    "ratio": "c",
+    "http_stream.h": "c"
   }
 }

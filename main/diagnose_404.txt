@@ -183,4 +183,57 @@ int custom_read(audio_element_handle_t self, char *buffer, int len, TickType_t t
 
 curl https://stream.pacificaservice.org:9000/khen_128 | head -c 100000 > head_of_khen.mp3 & ffprobe head_of_khen.mp3
 
+curl https://kexp.streamguys1.com/kexp160.aac | head -c 1000 > head_of_kexp.aac & ffprobe head_of_kexp.aac
+
 ffprobe discard before fffb,4  so perhaps we skip until fffb 
+
+Look for icy header in khen 
+
+curl -i https://stream.pacificaservice.org:9000/khen_128 | head -c 1000 |tee head_of_khen.mp3|hexdump -C
+curl -i http://26273.live.streamtheworld.com/KBUTFM.mp3 | head -c 1000 |tee head_of_kbut.mp3|hexdump -C
+
+
+log for khen:
+I (3566) AUDIO_PIPELINE_MGR: Creating audio pipeline for codec type: MP3 with URI: http://stream.pacificaservice.org:9000/khen_128
+I (3576) MP3_DECODER: MP3 init
+I (3586) AUDIO_PIPELINE: link el->rb, el:0x3f803d2c, tag:http, rb:0x3f804474
+I (3586) AUDIO_PIPELINE: link el->rb, el:0x3f804304, tag:codec, rb:0x3f8094bc
+I (3596) AUDIO_PIPELINE_MGR: Audio pipeline with MP3 codec created successfully
+I (3606) INTERNET_RADIO: Start audio_pipeline
+I (3606) AUDIO_THREAD: The http task allocate stack on external memory
+I (3616) AUDIO_ELEMENT: [http-0x3f803d2c] Element task created
+I (3616) AUDIO_THREAD: The codec task allocate stack on external memory
+I (3626) AUDIO_ELEMENT: [codec-0x3f804304] Element task created
+I (3626) AUDIO_THREAD: The i2s task allocate stack on internal memory
+I (3636) AUDIO_ELEMENT: [i2s-0x3f803f80] Element task created
+I (3646) AUDIO_PIPELINE: Func:audio_pipeline_run, Line:359, MEM Total:4318796 Bytes, Inter:223211 Bytes, Dram:215771 Bytes, Dram largest free:86016Bytes
+
+I (3656) AUDIO_ELEMENT: [http] AEL_MSG_CMD_RESUME,state:1
+I (3666) AUDIO_ELEMENT: [codec] AEL_MSG_CMD_RESUME,state:1
+I (3666) MP3_DECODER: MP3 opened
+I (3666) wifi:<ba-add>idx:1 (ifx:0, 6a:95:75:42:ca:9c), tid:0, ssn:0, winSize:64
+I (3676) AUDIO_ELEMENT: [i2s] AEL_MSG_CMD_RESUME,state:1
+I (3686) AUDIO_PIPELINE: Pipeline started
+E (4696) transport_base: tcp_read error, errno=Connection reset by peer
+I (4696) HTTP_STREAM: total_bytes=-1
+E (4696) HTTP_STREAM: Invalid HTTP stream, status code = -1
+E (4706) AUDIO_ELEMENT: [http] AEL_STATUS_ERROR_OPEN,-1
+W (4706) AUDIO_ELEMENT: [http] audio_element_on_cmd_error,7
+W (4716) AUDIO_ELEMENT: IN-[codec] AEL_IO_ABORT
+E (4716) MP3_DECODER: Failed to read audio data (line 136)
+W (4726) AUDIO_ELEMENT: [codec] AEL_IO_ABORT, -3
+I (4726) MP3_DECODER: Closed
+I (4736) AUDIO_PIPELINE_MGR: Codec event callback triggered for element: codec, command: 11
+I (4736) AUDIO_PIPELINE_MGR: Codec event callback triggered for element: codec, command: 8
+W (4746) AUDIO_ELEMENT: IN-[i2s] AEL_IO_ABORT
+
+curl -i -A "ESP32 HTTP Client/1.0"  https://stream.pacificaservice.org:9000/khen_128 | head -c 1000 |tee head_of_khen.mp3|hexdump -C
+curl -v  https://stream.pacificaservice.org:9000/khen_128 | head -c 1000 |tee head_of_khen.mp3|hexdump -C
+curl -v  http://stream.pacificaservice.org:9000/khen_128 | head -c 1000 |tee head_of_khen.mp3|hexdump -C
+
+certificate given by curl:
+*  CAfile: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+*  CApath: none
+
+
+curl -v  http://26273.live.streamtheworld.com/KBUTFM.mp3 | head -c 1000 |tee head_of_kbut.mp3|hexdump -C

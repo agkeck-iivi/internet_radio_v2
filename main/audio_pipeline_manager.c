@@ -12,6 +12,49 @@ extern audio_pipeline_components_t audio_pipeline_components;
 
 static const char *TAG = "AUDIO_PIPELINE_MGR";
 
+// // custom stream reader to handle shoutcast streams with "junk" before the start of mp3 frames
+// // Custom function to find the next MP3 frame in the buffer
+// bool find_mp3_sync_word(uint8_t* buffer, int len, int* offset) {
+//     for (int i = 0; i < len - 4; i++) {
+//         // Check for the 12-bit synchronization word (1111 1111 1111)
+//         if ((buffer[i] == 0xFF) && ((buffer[i+1] & 0xE0) == 0xE0)) {
+//             // Check for a valid MPEG Audio Version (1 or 2) and Layer (3)
+//             // (e.g., FFFB for MPEG1, Layer III)
+//             // For a robust implementation, you would parse the full header
+//             // to ensure it's a valid frame.
+//             *offset = i;
+//             return true;
+//         }
+//     }
+//     return false;
+// }
+
+// // Custom read function to discard junk data
+// int custom_read(audio_element_handle_t self, char *buffer, int len, TickType_t ticks_to_wait, void *context) {
+//     ESP_LOGI(TAG, "Custom read function called to filter junk data");
+//     int bytes_read = audio_element_input(audio_pipeline_components.http_stream_reader, buffer, len);
+//     if (bytes_read <= 0) {
+//         return bytes_read;
+//     }
+
+//     int offset = 0;
+//     while (!find_mp3_sync_word((uint8_t*)buffer + offset, bytes_read - offset, &offset)) {
+//         // Did not find a valid header, read more data
+//         int new_bytes = audio_element_input(audio_pipeline_components.http_stream_reader, buffer + bytes_read, len - bytes_read);
+//         if (new_bytes <= 0) {
+//             // No more data or an error occurred
+//             return -1;
+//         }
+//         bytes_read += new_bytes;
+//     }
+
+//     // A sync word was found, move the audio data to the start of the buffer
+//     memmove(buffer, buffer + offset, bytes_read - offset);
+//     return bytes_read - offset;
+// }
+
+
+
 const char *codec_type_to_string(codec_type_t codec)
 {
     switch (codec)
@@ -101,8 +144,9 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ret = ESP_FAIL;
         goto cleanup;
     }
-
- // board works here
+    // // custom reader to skip junk data before mp3 frames in shoutcast streams
+    // // this should be switchable.
+    // audio_element_set_read_cb(components->http_stream_reader, custom_read, NULL);
 
 #if defined CONFIG_ESP32_C3_LYRA_V2_BOARD
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_PDM_TX_CFG_DEFAULT();
@@ -117,8 +161,6 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ret = ESP_FAIL;
         goto cleanup;
     }
-
-// board does not work here    
 
 
     switch (codec_type)

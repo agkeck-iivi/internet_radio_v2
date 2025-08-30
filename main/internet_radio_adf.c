@@ -164,7 +164,7 @@ static const char* TAG = "INTERNET_RADIO";
 
 // Volume control
 #define INITIAL_VOLUME 100
-// #define VOLUME_STEP    10
+// #define VOLUME_STEP    10ed
 
 
 // Static global variables for easier access in callbacks
@@ -200,11 +200,11 @@ typedef struct
 
 station_t radio_stations[] = {
     {"KEXP Seattle", "https://kexp.streamguys1.com/kexp160.aac", CODEC_TYPE_AAC},
-    {"KBUT Crested Butte", "http://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
+    {"KBUT Crested Butte", "https://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
     {"KSUT 4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
     {"KDUR Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
     {"KOTO Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
-    {"KHEN Salida", "http://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
+    {"KHEN Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
     // Add more stations here
 };
 
@@ -341,7 +341,7 @@ void app_main(void)
     int temp_volume;
     // esp_log_level_set("*", ESP_LOG_DEBUG);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    // esp_log_level_set("AUDIO_PIPELINE_MGR", ESP_LOG_DEBUG);
+    esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES)
     {
