@@ -169,7 +169,7 @@ static const char* TAG = "INTERNET_RADIO";
 
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
-static int current_station = 5;
+static int current_station = 0;
 audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
@@ -410,34 +410,34 @@ void app_main(void)
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
-    // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
-    // static i2c_master_bus_handle_t i2c_bus;
-    // i2c_master_bus_config_t bus_cfg = {
-    //     .clk_source = I2C_CLK_SRC_DEFAULT,
-    //     .i2c_port = -1, // Use default I2C port
-    //     .sda_io_num = ESP_I2C_SDA,
-    //     .scl_io_num = ESP_I2C_SCL,
-    //     .glitch_ignore_cnt = 7,
-    //     .flags.enable_internal_pullup = true,
-    // };
-    // if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
-    // {
-    //     ESP_LOGE(TAG, "Failed to initialize I2C bus");
-    // }
-    // else
-    //     config.bus = &i2c_bus;
-    // ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-    // //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-    // if (NULL != ctx)
-    // {
-    //     // lcd1602_set_backlight(ctx, false);
-    //     // lcd1602_string(ctx, "foo Software");
-    //     // lcd1602_set_cursor(ctx, 1, 0);
-    //     // lcd1602_string(ctx, "LCD1602 Library");
-    //     lcd1602_set_display(ctx, true, false, false);
-    //     //   lcd1602_deinit(ctx);
-    // }
-    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
+    ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
+    static i2c_master_bus_handle_t i2c_bus;
+    i2c_master_bus_config_t bus_cfg = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = -1, // Use default I2C port
+        .sda_io_num = ESP_I2C_SDA,
+        .scl_io_num = ESP_I2C_SCL,
+        .glitch_ignore_cnt = 7,
+        .flags.enable_internal_pullup = true,
+    };
+    if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to initialize I2C bus");
+    }
+    else
+        config.bus = &i2c_bus;
+    ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+    //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+    if (NULL != ctx)
+    {
+        // lcd1602_set_backlight(ctx, false);
+        // lcd1602_string(ctx, "foo Software");
+        // lcd1602_set_cursor(ctx, 1, 0);
+        // lcd1602_string(ctx, "LCD1602 Library");
+        lcd1602_set_display(ctx, true, false, false);
+        //   lcd1602_deinit(ctx);
+    }
+    xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
 
     while (1)
     {
