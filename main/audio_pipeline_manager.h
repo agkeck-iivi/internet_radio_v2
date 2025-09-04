@@ -15,7 +15,8 @@ extern "C" {
 typedef enum {
     CODEC_TYPE_MP3,
     CODEC_TYPE_AAC,
-    CODEC_TYPE_OGG
+    CODEC_TYPE_OGG,
+    CODEC_TYPE_FLAC
 } codec_type_t;
 
 /**

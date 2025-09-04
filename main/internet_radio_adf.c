@@ -184,6 +184,7 @@ station_t radio_stations[] = {
     {"KSUT 4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
     {"KDUR Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
     {"KOTO Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
+    {"Radio Paradise", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
     {"KHEN Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
     // Add more stations here
 };

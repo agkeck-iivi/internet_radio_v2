@@ -5,53 +5,13 @@
 #include "i2s_stream.h"
 #include "aac_decoder.h"
 #include "mp3_decoder.h"
+#include "flac_decoder.h"
 #include "ogg_decoder.h"
 #include "board.h" // For CONFIG_ESP32_C3_LYRA_V2_BOARD and I2S_STREAM_PDM_TX_CFG_DEFAULT
 
 extern audio_pipeline_components_t audio_pipeline_components;
 
 static const char *TAG = "AUDIO_PIPELINE_MGR";
-
-// // custom stream reader to handle shoutcast streams with "junk" before the start of mp3 frames
-// // Custom function to find the next MP3 frame in the buffer
-// bool find_mp3_sync_word(uint8_t* buffer, int len, int* offset) {
-//     for (int i = 0; i < len - 4; i++) {
-//         // Check for the 12-bit synchronization word (1111 1111 1111)
-//         if ((buffer[i] == 0xFF) && ((buffer[i+1] & 0xE0) == 0xE0)) {
-//             // Check for a valid MPEG Audio Version (1 or 2) and Layer (3)
-//             // (e.g., FFFB for MPEG1, Layer III)
-//             // For a robust implementation, you would parse the full header
-//             // to ensure it's a valid frame.
-//             *offset = i;
-//             return true;
-//         }
-//     }
-//     return false;
-// }
-
-// // Custom read function to discard junk data
-// int custom_read(audio_element_handle_t self, char *buffer, int len, TickType_t ticks_to_wait, void *context) {
-//     ESP_LOGI(TAG, "Custom read function called to filter junk data");
-//     int bytes_read = audio_element_input(audio_pipeline_components.http_stream_reader, buffer, len);
-//     if (bytes_read <= 0) {
-//         return bytes_read;
-//     }
-
-//     int offset = 0;
-//     while (!find_mp3_sync_word((uint8_t*)buffer + offset, bytes_read - offset, &offset)) {
-//         // Did not find a valid header, read more data
-//         int new_bytes = audio_element_input(audio_pipeline_components.http_stream_reader, buffer + bytes_read, len - bytes_read);
-//         if (new_bytes <= 0) {
-//             // No more data or an error occurred
-//             return -1;
-//         }
-//         bytes_read += new_bytes;
-//     }
-
-//     // A sync word was found, move the audio data to the start of the buffer
-//     memmove(buffer, buffer + offset, bytes_read - offset);
-//     return bytes_read - offset;
-// }
 
 
 
@@ -65,6 +25,8 @@ const char *codec_type_to_string(codec_type_t codec)
         return "AAC";
     case CODEC_TYPE_OGG:
         return "OGG";
+    case CODEC_TYPE_FLAC:
+        return "FLAC";
     default:
         return "Unknown Codec";
     }
@@ -179,6 +141,11 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ESP_LOGD(TAG, "Creating OGG decoder");
         ogg_decoder_cfg_t ogg_cfg = DEFAULT_OGG_DECODER_CONFIG();
         components->codec_decoder = ogg_decoder_init(&ogg_cfg);
+        break;
+    case CODEC_TYPE_FLAC:
+        ESP_LOGD(TAG, "Creating FLAC decoder");
+        flac_decoder_cfg_t flac_cfg = DEFAULT_FLAC_DECODER_CONFIG();
+        components->codec_decoder = flac_decoder_init(&flac_cfg);
         break;
     default:
         ESP_LOGE(TAG, "Unsupported codec type: %d", codec_type);
