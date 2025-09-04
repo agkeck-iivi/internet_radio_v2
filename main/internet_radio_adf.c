@@ -59,14 +59,8 @@
 
 
 
-//    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
 static lcd1602_context* ctx = NULL; // Global context for LCD
-    // LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
-    // ESP_LOGI(TAG, "LCD initialized, starting demo task");
-    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
 
-    // Initialize the LCD using zorxx's lcd1602 library
-    // #define ESP_I2C_PORT    -1 // Use default I2C port
 #define LCD_I2C_SDA     GPIO_NUM_21
 #define LCD_I2C_SCL     GPIO_NUM_22
 #define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
@@ -98,6 +92,7 @@ void LCD_DemoTask(void* param)
         lcd1602_string(ctx, num);
         lcd1602_set_display(ctx, true, false, false);
         vTaskDelay(pdMS_TO_TICKS(1000));
+        // vTaskSuspend(NULL);
 
             // LCD_home();
             // LCD_clearScreen();
@@ -422,7 +417,10 @@ void app_main(void)
         lcd1602_set_display(ctx, true, false, false);
         //   lcd1602_deinit(ctx);
     }
-    xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL);
+
+    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL);
+
+    xTaskCreatePinnedToCore(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL, 0);
 
     while (1)
     {
