@@ -50,6 +50,7 @@
 #include "lcd1602/lcd1602.h"
 
 
+
 // note: the arduino library for reset sends 0x03 3 times, then 0x02 once
 //  0x03 wait 4500 us 0x03 wait 4500 us 0x03 wait 150 us 0x02
 // this library only sends it twice.
@@ -66,8 +67,8 @@ static lcd1602_context* ctx = NULL; // Global context for LCD
 
     // Initialize the LCD using zorxx's lcd1602 library
     // #define ESP_I2C_PORT    -1 // Use default I2C port
-#define ESP_I2C_SDA     GPIO_NUM_21
-#define ESP_I2C_SCL     GPIO_NUM_22
+#define LCD_I2C_SDA     GPIO_NUM_21
+#define LCD_I2C_SCL     GPIO_NUM_22
 #define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
 
 static    i2c_lowlevel_config config = { 0 };
@@ -80,25 +81,9 @@ void LCD_DemoTask(void* param)
     while (true) {
         // LCD_reset();
         int res;
-        // can't seem to keep the lcd 1602 working so we will continually deint and reinit it.
-        // lcd1602_deinit(ctx);
-        // ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-        // deint and reint didn't help.  toggleing power does.
-
-        // let's see if backlight power is the issue.
-        // lcd1602_set_backlight(ctx, false);
-        // lcd1602_set_backlight(ctx, true);
-        // that didn't work.
-
-        // try turning the display off and on
-        // lcd1602_set_display(ctx, true, false, false);
-        // lcd1602_set_display(ctx, false, false, false);
-        // lcd1602_set_display(ctx, true, false, false);
 
 
-    // it looks like just wiggling the power supply leads to the lcd1602 working again.
-    // so maybe a low pass filter on the power line will help.
-    // tried a 0.1 uF cap from Vcc to ground, didn't help.
+    
 
 
         res = lcd1602_reset(ctx);
@@ -415,8 +400,8 @@ void app_main(void)
     i2c_master_bus_config_t bus_cfg = {
         .clk_source = I2C_CLK_SRC_DEFAULT,
         .i2c_port = -1, // Use default I2C port
-        .sda_io_num = ESP_I2C_SDA,
-        .scl_io_num = ESP_I2C_SCL,
+        .sda_io_num = LCD_I2C_SDA,
+        .scl_io_num = LCD_I2C_SCL,
         .glitch_ignore_cnt = 7,
         .flags.enable_internal_pullup = true,
     };
@@ -437,7 +422,7 @@ void app_main(void)
         lcd1602_set_display(ctx, true, false, false);
         //   lcd1602_deinit(ctx);
     }
-    xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 5, NULL);
+    xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL);
 
     while (1)
     {
