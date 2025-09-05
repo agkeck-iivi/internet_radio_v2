@@ -88,6 +88,7 @@ static const char* TAG = "INTERNET_RADIO";
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
 static int current_station = 0;
+static int s_current_bitrate_kbps = 0;
 audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
@@ -101,6 +102,22 @@ static button_handle_t station_up_btn_handle = NULL;
 #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
 #define CUSTOM_CMD_PRINT_MESSAGE 1
 
+static esp_err_t codec_event_cb(audio_element_handle_t el, audio_event_iface_msg_t *msg, void *ctx)
+{
+    if (msg->source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg->source == (void *)el)
+    {
+        if (msg->cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        {
+            audio_element_info_t music_info = {0};
+            audio_element_getinfo(el, &music_info);
+            ESP_LOGI(TAG, "[ * ] Callback: Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d, bitrate=%d",
+                     music_info.sample_rates, music_info.bits, music_info.channels, music_info.bit_rate);
+            i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+            s_current_bitrate_kbps = music_info.bit_rate / 1000;
+        }
+    }
+    return ESP_OK;
+}
 
 
 
@@ -132,9 +149,10 @@ void lcd_update(void* param)
 {
     const char* TAG = "LCD_Display";
     int last_displayed_station = -1;
+    int last_displayed_bitrate = -1;
     while (true) {
         // Only update the display if the station has changed
-        if (ctx != NULL && current_station != last_displayed_station) {
+        if (ctx != NULL && (current_station != last_displayed_station || s_current_bitrate_kbps != last_displayed_bitrate)) {
             ESP_LOGI(TAG, "Updating LCD for station: %s", radio_stations[current_station].call_sign);
 
             lcd1602_clear(ctx);
@@ -143,11 +161,21 @@ void lcd_update(void* param)
             lcd1602_set_cursor(ctx, 0, 0);
             lcd1602_string(ctx, radio_stations[current_station].call_sign);
 
+            if (s_current_bitrate_kbps > 0) {
+                char bitrate_str[16];
+                snprintf(bitrate_str, sizeof(bitrate_str), "%d Kb/s", s_current_bitrate_kbps);
+                // Position cursor to the right of the screen
+                int bitrate_len = strlen(bitrate_str);
+                lcd1602_set_cursor(ctx, 0, LCD_COLS - bitrate_len);
+                lcd1602_string(ctx, bitrate_str);
+            }
+
             // Display city on the second line
             lcd1602_set_cursor(ctx, 1, 0);
             lcd1602_string(ctx, radio_stations[current_station].city);
 
             last_displayed_station = current_station;
+            last_displayed_bitrate = s_current_bitrate_kbps;
         }
         vTaskDelay(pdMS_TO_TICKS(500)); // Check for station changes every 500ms
     }
@@ -159,6 +187,7 @@ static void station_up_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Station Up Button Pressed");
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
+    s_current_bitrate_kbps = 0;
     current_station = (current_station + 1) % station_count;
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
@@ -172,6 +201,7 @@ static void station_up_button_cb(void* arg, void* usr_data) {
     }
 
     if (audio_pipeline_components.pipeline && evt) {
+        audio_element_set_event_callback(audio_pipeline_components.codec_decoder, codec_event_cb, NULL);
         ESP_LOGI(TAG, "Setting listener for new pipeline");
         ESP_LOGI(TAG, "Starting new audio pipeline");
         ret = audio_pipeline_run(audio_pipeline_components.pipeline);
@@ -197,6 +227,7 @@ static void station_down_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Station Up Button Pressed");
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
+    s_current_bitrate_kbps = 0;
     current_station = (current_station + station_count - 1) % station_count;
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
@@ -210,6 +241,7 @@ static void station_down_button_cb(void* arg, void* usr_data) {
     }
 
     if (audio_pipeline_components.pipeline && evt) {
+        audio_element_set_event_callback(audio_pipeline_components.codec_decoder, codec_event_cb, NULL);
         ESP_LOGI(TAG, "Setting listener for new pipeline");
         ESP_LOGI(TAG, "Starting new audio pipeline");
         ret = audio_pipeline_run(audio_pipeline_components.pipeline);
@@ -345,6 +377,8 @@ void app_main(void)
         return;
     }
 
+    // Set the callback for the initial pipeline
+    audio_element_set_event_callback(audio_pipeline_components.codec_decoder, codec_event_cb, NULL);
 
     // ESP_LOGI(TAG, "Listening event from all elements of pipeline");
     // audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
