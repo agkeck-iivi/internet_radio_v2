@@ -9,7 +9,11 @@
 #include "ogg_decoder.h"
 #include "board.h" // For CONFIG_ESP32_C3_LYRA_V2_BOARD and I2S_STREAM_PDM_TX_CFG_DEFAULT
 
+extern audio_pipeline_components_t audio_pipeline_components;
+
 static const char *TAG = "AUDIO_PIPELINE_MGR";
+
+
 
 const char *codec_type_to_string(codec_type_t codec)
 {
@@ -46,6 +50,24 @@ static int _http_stream_event_handle(http_stream_event_msg_t *msg)
     return ESP_OK;
 }
 
+#include "board.h" // remove after debugging
+extern audio_board_handle_t board_handle; // remove after debugging
+
+static esp_err_t codec_event_cb(audio_element_handle_t el, audio_event_iface_msg_t *msg, void *ctx){
+    ESP_LOGI(TAG, "Codec event callback triggered for element: %s, command: %d", audio_element_get_tag(el), msg->cmd);
+    if (msg->source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg->source == (void *)el)
+    {
+        if (msg->cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
+        {
+            audio_element_info_t music_info = {0};
+            audio_element_getinfo(el, &music_info);
+            ESP_LOGI(TAG, "[ * ] Callback: Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d",
+                     music_info.sample_rates, music_info.bits, music_info.channels);
+            i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+        }
+    }
+    return ESP_OK;
+}
 esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_type_t codec_type, const char *uri)
 {
     
@@ -136,6 +158,8 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ret = ESP_FAIL;
         goto cleanup;
     }
+    // codec callback filters for music info (sample rate, bits, channels) and sets i2s stream clock
+    audio_element_set_event_callback(components->codec_decoder, codec_event_cb, NULL);
 
     if (audio_pipeline_register(components->pipeline, components->http_stream_reader, "http") != ESP_OK ||
         audio_pipeline_register(components->pipeline, components->codec_decoder, "codec") != ESP_OK ||
