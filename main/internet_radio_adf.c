@@ -67,77 +67,15 @@ static lcd1602_context* ctx = NULL; // Global context for LCD
 
 static    i2c_lowlevel_config config = { 0 };
 
-void LCD_DemoTask(void* param)
-{
-    const char* TAG = "LCD_demo";
-    char num[20];
-    int i=0;
-    while (true) {
-        // LCD_reset();
-        int res;
-
-
-    
-
-
-        res = lcd1602_reset(ctx);
-        if(res != 0)
-        {
-            ESP_LOGE(TAG, "Failed to reset LCD: %d", res);
-        }
-        res = lcd1602_clear(ctx);
-        lcd1602_string(ctx, "count = ");
-        lcd1602_set_cursor(ctx, 1, 0);
-        sprintf(num, "%d", i++);
-        lcd1602_string(ctx, num);
-        lcd1602_set_display(ctx, true, false, false);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        // vTaskSuspend(NULL);
-
-            // LCD_home();
-            // LCD_clearScreen();
-            // LCD_writeStr("16x2 I2C LCD");
-            // vTaskDelay(1000 / portTICK_RATE_MS);
-            // LCD_clearScreen();
-            // LCD_writeStr("Lets Count 0-10!");
-            // vTaskDelay(1000 / portTICK_RATE_MS);
-            // LCD_clearScreen();
-            // for (int i = 0; i <= 10; i++) {
-            //     LCD_setCursor(8, 1);
-            //     sprintf(num, "%d", i);
-            //     LCD_writeStr(num);
-            //     vTaskDelay(1000 / portTICK_RATE_MS);
-            // }
-
-    }
-}
 
 static const char* TAG = "INTERNET_RADIO";
 
 
 
-// NOTES:
-
-// Current i2s_stream.h implementation fails with this board
-// The i2c interface works at init time but after starting the i2s stream we can
-// no longer access the volume control 
-// This bug claims a fix is in the works: https://github.com/espressif/esp-idf/issues/14030
-// This bug is almost exactly the same behavior as the one I am seeing: https://github.com/espressif/esp-adf/issues/1334
-
-// low pass filter: 100 \Omega, 22 pF with 1K pullup resistor works for about 15 minutes (900 writes)
-// spreadsheet with rc values for various filters: https://docs.google.com/spreadsheets/d/1gqpgkPefZ_oJ2fmMdUvjdyCvKpkRdYS4wy-v37hEgWs/edit?gid=0#gid=0
-
-
-// pinout https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32/esp32-devkitc/user_guide.html#header-block
-// GPIO definitions for buttons
-
-// lcd 16x2 with i2c backpack and 3.3v power: https://www.buydisplay.com/3-3v-or-5v-lcd-module-16x2-1602-character-display-i2c-arduino-wide-view
 
 // lcd with boost-buck converter: https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/3584/MCCOG21605D6W-BNMLWI.pdf
 
 
-// #define GPIO_VOLUME_UP      14
-// #define GPIO_VOLUME_DOWN    27
 #define GPIO_STATION_DOWN     14
 #define GPIO_STATION_UP     12
 #define GPIO_ACTIVE_LOW     0
@@ -174,22 +112,48 @@ static button_handle_t station_up_btn_handle = NULL;
 typedef struct
 {
     const char* call_sign; // Station's call sign or name
+    const char* city;      // Station's city
     const char* uri;       // Stream URI
     codec_type_t codec;    // Codec type for the stream
 } station_t;
 
 station_t radio_stations[] = {
-    {"KEXP Seattle", "https://kexp.streamguys1.com/kexp160.aac", CODEC_TYPE_AAC},
-    {"KBUT Crested Butte", "https://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
-    {"KSUT 4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
-    {"KDUR Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
-    {"KOTO Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
-    {"Radio Paradise", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
-    {"KHEN Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
+    {"KEXP", "Seattle", "https://kexp.streamguys1.com/kexp160.aac", CODEC_TYPE_AAC},
+    {"KBUT", "Crested Butte", "https://26273.live.streamtheworld.com/KBUTFM.mp3", CODEC_TYPE_MP3},
+    {"KSUT", "4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
+    {"KDUR", "Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
+    {"KOTO", "Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
+    {"Radio Paradise", "", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
+    {"KHEN", "Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
     // Add more stations here
 };
 
 int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
+
+void lcd_update(void* param)
+{
+    const char* TAG = "LCD_Display";
+    int last_displayed_station = -1;
+    while (true) {
+        // Only update the display if the station has changed
+        if (ctx != NULL && current_station != last_displayed_station) {
+            ESP_LOGI(TAG, "Updating LCD for station: %s", radio_stations[current_station].call_sign);
+
+            lcd1602_clear(ctx);
+
+            // Display call sign on the first line
+            lcd1602_set_cursor(ctx, 0, 0);
+            lcd1602_string(ctx, radio_stations[current_station].call_sign);
+
+            // Display city on the second line
+            lcd1602_set_cursor(ctx, 1, 0);
+            lcd1602_string(ctx, radio_stations[current_station].city);
+
+            last_displayed_station = current_station;
+        }
+        vTaskDelay(pdMS_TO_TICKS(500)); // Check for station changes every 500ms
+    }
+}
 
 static void station_up_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
@@ -198,14 +162,14 @@ static void station_up_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + 1) % station_count;
-    ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
+    ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
     ret = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
         radio_stations[current_station].uri);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s. Error: %d", radio_stations[current_station].call_sign, ret);
+        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s, %s. Error: %d", radio_stations[current_station].call_sign, radio_stations[current_station].city, ret);
         return;
     }
 
@@ -218,7 +182,7 @@ static void station_up_button_cb(void* arg, void* usr_data) {
             destroy_audio_pipeline(&audio_pipeline_components);
         }
         else {
-            ESP_LOGI(TAG, "Successfully switched to station: %s", radio_stations[current_station].call_sign);
+            ESP_LOGI(TAG, "Successfully switched to station: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
         }
     }
     else {
@@ -236,14 +200,14 @@ static void station_down_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + station_count - 1) % station_count;
-    ESP_LOGI(TAG, "Switching to station %d: %s", current_station, radio_stations[current_station].call_sign);
+    ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
     ret = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
         radio_stations[current_station].uri);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s. Error: %d", radio_stations[current_station].call_sign, ret);
+        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s, %s. Error: %d", radio_stations[current_station].call_sign, radio_stations[current_station].city, ret);
         return;
     }
 
@@ -256,7 +220,7 @@ static void station_down_button_cb(void* arg, void* usr_data) {
             destroy_audio_pipeline(&audio_pipeline_components);
         }
         else {
-            ESP_LOGI(TAG, "Successfully switched to station: %s", radio_stations[current_station].call_sign);
+            ESP_LOGI(TAG, "Successfully switched to station: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
         }
     }
     else {
@@ -369,7 +333,7 @@ void app_main(void)
     init_buttons();
 
 
-    ESP_LOGI(TAG, "Starting initial stream: %s", radio_stations[current_station].call_sign);
+    ESP_LOGI(TAG, "Starting initial stream: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
     err = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
         radio_stations[current_station].uri);
@@ -419,9 +383,7 @@ void app_main(void)
         //   lcd1602_deinit(ctx);
     }
 
-    // xTaskCreate(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL);
-
-    xTaskCreatePinnedToCore(&LCD_DemoTask, "Demo Task", 4 * 1024, NULL, 1, NULL, 0);
+    xTaskCreatePinnedToCore(&lcd_update, "LCD Update Task", 4 * 1024, NULL, 1, NULL, 0);
 
     while (1)
     {
