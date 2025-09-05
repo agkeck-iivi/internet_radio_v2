@@ -128,6 +128,32 @@ station_t radio_stations[] = {
 
 int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
 
+static void save_current_station_to_nvs(int station_index)
+{
+    nvs_handle_t nvs_handle;
+    esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle for writing!", esp_err_to_name(err));
+        return;
+    }
+
+    err = nvs_set_i32(nvs_handle, "station_idx", station_index);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error (%s) writing 'station_idx' to NVS!", esp_err_to_name(err));
+    }
+    else {
+        ESP_LOGI(TAG, "Saved current_station = %d to NVS", station_index);
+    }
+
+    err = nvs_commit(nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error (%s) committing 'station_idx' to NVS!", esp_err_to_name(err));
+    }
+
+    nvs_close(nvs_handle);
+}
+
+
 void lcd_update(void* param)
 {
     const char* TAG = "LCD_Display";
@@ -160,6 +186,7 @@ static void station_up_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + 1) % station_count;
+    save_current_station_to_nvs(current_station);
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
@@ -198,6 +225,7 @@ static void station_down_button_cb(void* arg, void* usr_data) {
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + station_count - 1) % station_count;
+    save_current_station_to_nvs(current_station);
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
@@ -286,11 +314,42 @@ void app_main(void)
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
     esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
     esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES)
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
         ESP_ERROR_CHECK(nvs_flash_erase());
         err = nvs_flash_init();
     }
+    ESP_ERROR_CHECK(err);
+
+    nvs_handle_t nvs_handle;
+    err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error (%s) opening NVS handle!", esp_err_to_name(err));
+    }
+    else {
+        ESP_LOGI(TAG, "Reading current_station from NVS");
+        int32_t station_from_nvs = 0; // default to 0
+        err = nvs_get_i32(nvs_handle, "station_idx", &station_from_nvs);
+        switch (err) {
+        case ESP_OK:
+            ESP_LOGI(TAG, "Successfully read current_station = %d", (int)station_from_nvs);
+            if (station_from_nvs >= 0 && station_from_nvs < station_count) {
+                current_station = station_from_nvs;
+            }
+            else {
+                ESP_LOGW(TAG, "Invalid station index %d found in NVS, defaulting to 0", (int)station_from_nvs);
+                current_station = 0;
+            }
+            break;
+        case ESP_ERR_NVS_NOT_FOUND:
+            ESP_LOGI(TAG, "The value 'station_idx' is not initialized yet!");
+            break;
+        default:
+            ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+        }
+        nvs_close(nvs_handle);
+    }
+
 #if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0))
     ESP_ERROR_CHECK(esp_netif_init());
 #else
