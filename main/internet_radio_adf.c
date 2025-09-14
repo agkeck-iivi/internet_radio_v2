@@ -39,14 +39,6 @@
 #include "driver/gpio.h"
 
 
-// #include "HD44780.h"  // for lcd 16x2 i2c backpack
-
-#define LCD_ADDR 0x27
-#define SDA_PIN  21
-#define SCL_PIN  22
-#define LCD_COLS 16
-#define LCD_ROWS 2
-
 #include "lcd1602/lcd1602.h"
 
 
@@ -405,8 +397,6 @@ void app_main(void)
     }
 
 
-    // ESP_LOGI(TAG, "Listening event from all elements of pipeline");
-    // audio_pipeline_set_listener(audio_pipeline_components.pipeline, evt);
 
 
     ESP_LOGI(TAG, "Start audio_pipeline");
@@ -429,15 +419,9 @@ void app_main(void)
     else
         config.bus = &i2c_bus;
     ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-    //    lcd1602_context *ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
     if (NULL != ctx)
     {
-        // lcd1602_set_backlight(ctx, false);
-        // lcd1602_string(ctx, "foo Software");
-        // lcd1602_set_cursor(ctx, 1, 0);
-        // lcd1602_string(ctx, "LCD1602 Library");
         lcd1602_set_display(ctx, true, false, false);
-        //   lcd1602_deinit(ctx);
     }
 
     xTaskCreatePinnedToCore(&lcd_update, "LCD Update Task", 4 * 1024, NULL, 1, NULL, 0);
