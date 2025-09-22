@@ -113,7 +113,7 @@ station_t radio_stations[] = {
     {"KSUT", "4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
     {"KDUR", "Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
     {"KOTO", "Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
-    {"inet", "Radio Paradise", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
+    // {"inet", "Radio Paradise", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
     {"KHEN", "Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
     // Add more stations here
 };
@@ -348,7 +348,7 @@ void app_main(void)
     tcpip_adapter_init();
 #endif
 
-
+    // current_station = 0; //force to first station during debugging
     ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     periph_set = esp_periph_set_init(&periph_cfg); // Assign to static global
