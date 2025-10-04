@@ -24,5 +24,5 @@
     * reading from lcd 1602 side: gnd, vcc, sda, scl, station down, station up
   * mount 4 pin 90 deg. connector to attach to lcd 1602
   * low pass filters for sda and scl on top board on the far side of the lcd 1602 connector
-  * cut hole in top board for lcd 1602 contrast trip pot.
+  * cut hole in top board for lcd 1602 contrast trim pot.
 ![internet radio version 1 top board detail](v1_top_board_detail.jpg)

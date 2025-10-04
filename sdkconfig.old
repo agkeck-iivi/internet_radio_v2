@@ -435,8 +435,6 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Example Configuration
 #
-CONFIG_WIFI_SSID="headquarters"
-CONFIG_WIFI_PASSWORD="dog8house4"
 # end of Example Configuration
 
 #
