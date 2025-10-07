@@ -113,8 +113,10 @@ station_t radio_stations[] = {
     {"KSUT", "4 Corners", "https://ksut.streamguys1.com/kute?uuid=mjgs8e5f8", CODEC_TYPE_AAC},
     {"KDUR", "Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
     {"KOTO", "Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
-    // {"inet", "Radio Paradise", "https://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
     {"KHEN", "Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
+    // {"KRCL", "Salt Lake City", "https://kcpw.xmission.com/krcl-high", CODEC_TYPE_AAC}},
+    // {"KWSB", "Gunnison", "https://kwsb.streamguys1.com/live", CODEC_TYPE_MP3}
+    // {"inet", "Radio Paradise", "http://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},
     // Add more stations here
 };
 
