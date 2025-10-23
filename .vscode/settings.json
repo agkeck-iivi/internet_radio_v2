@@ -18,6 +18,7 @@
     "audio_pipeline_manager.h": "c",
     "lcd1602.h": "c",
     "ratio": "c",
-    "http_stream.h": "c"
+    "http_stream.h": "c",
+    "flac_decoder.h": "c"
   }
 }

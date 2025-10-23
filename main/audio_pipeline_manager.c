@@ -11,11 +11,11 @@
 
 extern audio_pipeline_components_t audio_pipeline_components;
 
-static const char *TAG = "AUDIO_PIPELINE_MGR";
+static const char* TAG = "AUDIO_PIPELINE_MGR";
 
 
 
-const char *codec_type_to_string(codec_type_t codec)
+const char* codec_type_to_string(codec_type_t codec)
 {
     switch (codec)
     {
@@ -32,7 +32,7 @@ const char *codec_type_to_string(codec_type_t codec)
     }
 }
 
-static int _http_stream_event_handle(http_stream_event_msg_t *msg)
+static int _http_stream_event_handle(http_stream_event_msg_t* msg)
 {
     if (msg->event_id == HTTP_STREAM_RESOLVE_ALL_TRACKS)
     {
@@ -53,24 +53,24 @@ static int _http_stream_event_handle(http_stream_event_msg_t *msg)
 #include "board.h" // remove after debugging
 extern audio_board_handle_t board_handle; // remove after debugging
 
-static esp_err_t codec_event_cb(audio_element_handle_t el, audio_event_iface_msg_t *msg, void *ctx){
+static esp_err_t codec_event_cb(audio_element_handle_t el, audio_event_iface_msg_t* msg, void* ctx) {
     ESP_LOGI(TAG, "Codec event callback triggered for element: %s, command: %d", audio_element_get_tag(el), msg->cmd);
-    if (msg->source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg->source == (void *)el)
+    if (msg->source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg->source == (void*)el)
     {
         if (msg->cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
         {
-            audio_element_info_t music_info = {0};
+            audio_element_info_t music_info = { 0 };
             audio_element_getinfo(el, &music_info);
             ESP_LOGI(TAG, "[ * ] Callback: Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d",
-                     music_info.sample_rates, music_info.bits, music_info.channels);
+                music_info.sample_rates, music_info.bits, music_info.channels);
             i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
         }
     }
     return ESP_OK;
 }
-esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_type_t codec_type, const char *uri)
+esp_err_t create_audio_pipeline(audio_pipeline_components_t* components, codec_type_t codec_type, const char* uri)
 {
-    
+
     if (components == NULL)
     {
         ESP_LOGE(TAG, "audio_pipeline_components_t pointer is NULL");
@@ -81,7 +81,7 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         ESP_LOGE(TAG, "URI is NULL");
         return ESP_ERR_INVALID_ARG;
     }
- // board works here   
+    // board works here   
     esp_err_t ret = ESP_OK;
 
     ESP_LOGI(TAG, "Creating audio pipeline for codec type: %s with URI: %s", codec_type_to_string(codec_type), uri);
@@ -130,6 +130,7 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
     case CODEC_TYPE_AAC:
         ESP_LOGD(TAG, "Creating AAC decoder");
         aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
+        // aac_cfg.plus_enable = true;
         components->codec_decoder = aac_decoder_init(&aac_cfg);
         break;
     case CODEC_TYPE_MP3:
@@ -170,7 +171,7 @@ esp_err_t create_audio_pipeline(audio_pipeline_components_t *components, codec_t
         goto cleanup;
     }
 
-    const char *link_tag[3] = {"http", "codec", "i2s"};
+    const char* link_tag[3] = { "http", "codec", "i2s" };
     if (audio_pipeline_link(components->pipeline, &link_tag[0], 3) != ESP_OK)
     {
         ESP_LOGE(TAG, "Failed to link pipeline elements: http->%s->i2s", codec_type_to_string(codec_type));
@@ -213,7 +214,7 @@ cleanup:
     return ret;
 }
 
-esp_err_t destroy_audio_pipeline(audio_pipeline_components_t *components)
+esp_err_t destroy_audio_pipeline(audio_pipeline_components_t* components)
 {
     if (components == NULL)
     {
