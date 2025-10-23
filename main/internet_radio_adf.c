@@ -39,7 +39,7 @@
 #include "driver/gpio.h"
 
 
-#include "lcd1602/lcd1602.h"
+// #include "lcd1602/lcd1602.h"
 
 
 
@@ -51,13 +51,13 @@
 
 
 
-static lcd1602_context* ctx = NULL; // Global context for LCD
+// static lcd1602_context* ctx = NULL; // Global context for LCD
 
-#define LCD_I2C_SDA     GPIO_NUM_21
-#define LCD_I2C_SCL     GPIO_NUM_22
-#define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
+// #define LCD_I2C_SDA     GPIO_NUM_21
+// #define LCD_I2C_SCL     GPIO_NUM_22
+// #define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
 
-static    i2c_lowlevel_config config = { 0 };
+// static    i2c_lowlevel_config config = { 0 };
 
 
 static const char* TAG = "INTERNET_RADIO";
@@ -154,30 +154,30 @@ static void save_current_station_to_nvs(int station_index)
 }
 
 
-void lcd_update(void* param)
-{
-    const char* TAG = "LCD_Display";
-    int last_displayed_station = -1;
-    while (true) {
-        // Only update the display if the station has changed
-        if (ctx != NULL && current_station != last_displayed_station) {
-            ESP_LOGI(TAG, "Updating LCD for station: %s", radio_stations[current_station].call_sign);
+// void lcd_update(void* param)
+// {
+//     const char* TAG = "LCD_Display";
+//     int last_displayed_station = -1;
+//     while (true) {
+//         // Only update the display if the station has changed
+//         if (ctx != NULL && current_station != last_displayed_station) {
+//             ESP_LOGI(TAG, "Updating LCD for station: %s", radio_stations[current_station].call_sign);
 
-            lcd1602_clear(ctx);
+//             lcd1602_clear(ctx);
 
-            // Display call sign on the first line
-            lcd1602_set_cursor(ctx, 0, 0);
-            lcd1602_string(ctx, radio_stations[current_station].call_sign);
+//             // Display call sign on the first line
+//             lcd1602_set_cursor(ctx, 0, 0);
+//             lcd1602_string(ctx, radio_stations[current_station].call_sign);
 
-            // Display city on the second line
-            lcd1602_set_cursor(ctx, 1, 0);
-            lcd1602_string(ctx, radio_stations[current_station].city);
+//             // Display city on the second line
+//             lcd1602_set_cursor(ctx, 1, 0);
+//             lcd1602_string(ctx, radio_stations[current_station].city);
 
-            last_displayed_station = current_station;
-        }
-        vTaskDelay(pdMS_TO_TICKS(500)); // Check for station changes every 500ms
-    }
-}
+//             last_displayed_station = current_station;
+//         }
+//         vTaskDelay(pdMS_TO_TICKS(500)); // Check for station changes every 500ms
+//     }
+// }
 
 static void station_up_button_cb(void* arg, void* usr_data) {
     esp_err_t ret;
@@ -410,29 +410,29 @@ void app_main(void)
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
-    ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
-    static i2c_master_bus_handle_t i2c_bus;
-    i2c_master_bus_config_t bus_cfg = {
-        .clk_source = I2C_CLK_SRC_DEFAULT,
-        .i2c_port = -1, // Use default I2C port
-        .sda_io_num = LCD_I2C_SDA,
-        .scl_io_num = LCD_I2C_SCL,
-        .glitch_ignore_cnt = 7,
-        .flags.enable_internal_pullup = true,
-    };
-    if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
-    {
-        ESP_LOGE(TAG, "Failed to initialize I2C bus");
-    }
-    else
-        config.bus = &i2c_bus;
-    ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-    if (NULL != ctx)
-    {
-        lcd1602_set_display(ctx, true, false, false);
-    }
+    // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
+    // static i2c_master_bus_handle_t i2c_bus;
+    // i2c_master_bus_config_t bus_cfg = {
+    //     .clk_source = I2C_CLK_SRC_DEFAULT,
+    //     .i2c_port = -1, // Use default I2C port
+    //     .sda_io_num = LCD_I2C_SDA,
+    //     .scl_io_num = LCD_I2C_SCL,
+    //     .glitch_ignore_cnt = 7,
+    //     .flags.enable_internal_pullup = true,
+    // };
+    // if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
+    // {
+    //     ESP_LOGE(TAG, "Failed to initialize I2C bus");
+    // }
+    // else
+    //     config.bus = &i2c_bus;
+    // ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
+    // if (NULL != ctx)
+    // {
+    //     lcd1602_set_display(ctx, true, false, false);
+    // }
 
-    xTaskCreatePinnedToCore(&lcd_update, "LCD Update Task", 4 * 1024, NULL, 1, NULL, 0);
+    // xTaskCreatePinnedToCore(&lcd_update, "LCD Update Task", 4 * 1024, NULL, 1, NULL, 0);
 
     while (1)
     {

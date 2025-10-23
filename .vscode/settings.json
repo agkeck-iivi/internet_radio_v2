@@ -2,9 +2,8 @@
   "C_Cpp.intelliSenseEngine": "default",
   "idf.espIdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp_idf/v5.5-rc1/esp-idf",
   "idf.toolsPath": "/home/agkeck/esp/esp-idf_v5_5/tools",
-  // "idf.espAdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp-adf/", // agk added this line  it didn't seem to set the path correctly
   "idf.pythonInstallPath": "/usr/bin/python",
-  "idf.port": "/dev/ttyUSB0",
+  "idf.port": "/dev/ttyACM0",
   "idf.flashType": "UART",
   "files.associations": {
     "esp_netif.h": "c",
@@ -20,5 +19,17 @@
     "ratio": "c",
     "http_stream.h": "c",
     "flac_decoder.h": "c"
-  }
+  },
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "idf.customExtraVars": {
+    "IDF_TARGET": "esp32s3"
+  },
+  "clangd.path": "/home/agkeck/esp/esp-idf_v5_5/tools/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
+  "clangd.arguments": [
+    "--background-index",
+    "--query-driver=/home/agkeck/esp/esp-idf_v5_5/tools/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
+    "--compile-commands-dir=/home/agkeck/project/mc_projects/esp32/internet_radio_v2/build"
+  ]
 }
