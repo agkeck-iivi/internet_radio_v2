@@ -14,6 +14,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "esp_event.h"
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
@@ -37,6 +38,9 @@
 #include "iot_button.h"
 #include "button_gpio.h"
 #include "driver/gpio.h"
+
+#include "wifi_provisioning/manager.h"
+#include "wifi_provisioning/scheme_ble.h"
 
 
 // #include "lcd1602/lcd1602.h"
@@ -88,6 +92,9 @@ static esp_periph_set_handle_t periph_set = NULL;
 static button_handle_t station_down_btn_handle = NULL;
 static button_handle_t station_up_btn_handle = NULL;
 
+/* Event group to signal when Wi-Fi is connected */
+static EventGroupHandle_t wifi_event_group;
+const int WIFI_CONNECTED_BIT = BIT0;
 // Custom event definitions
 #define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
 #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
@@ -307,6 +314,66 @@ static void init_buttons(void) {
     }
 }
 
+/* Event handler for catching system events */
+static void event_handler(void* arg, esp_event_base_t event_base,
+    int32_t event_id, void* event_data)
+{
+    if (event_base == WIFI_PROV_EVENT) {
+        switch (event_id) {
+        case WIFI_PROV_START:
+            ESP_LOGI(TAG, "Provisioning started");
+            break;
+        case WIFI_PROV_CRED_RECV: {
+            wifi_sta_config_t* wifi_sta_cfg = (wifi_sta_config_t*)event_data;
+            ESP_LOGI(TAG, "Received Wi-Fi credentials"
+                "\n\tSSID: %s\n\tPassword: %s",
+                (const char*)wifi_sta_cfg->ssid,
+                (const char*)wifi_sta_cfg->password);
+            break;
+        }
+        case WIFI_PROV_CRED_FAIL: {
+            wifi_prov_sta_fail_reason_t* reason = (wifi_prov_sta_fail_reason_t*)event_data;
+            ESP_LOGE(TAG, "Provisioning failed!\n\tReason: %s"
+                "\n\tPlease reset to factory and retry.",
+                (*reason == WIFI_PROV_STA_AUTH_ERROR) ?
+                "Wi-Fi station authentication failed" : "Wi-Fi station not found");
+            break;
+        }
+        case WIFI_PROV_CRED_SUCCESS:
+            ESP_LOGI(TAG, "Provisioning successful");
+            break;
+        case WIFI_PROV_END:
+            /* De-initialize manager once provisioning is finished */
+            wifi_prov_mgr_deinit();
+            break;
+        default:
+            break;
+        }
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    }
+    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
+        ESP_LOGI(TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_BIT);
+    }
+    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
+        esp_wifi_connect();
+    }
+}
+
+static void get_device_service_name(char* service_name, size_t max)
+{
+    uint8_t eth_mac[6];
+    const char* ssid_prefix = "agk radio mac:";
+    esp_wifi_get_mac(WIFI_IF_STA, eth_mac);
+    snprintf(service_name, max, "%s%02X%02X%02X",
+        ssid_prefix, eth_mac[3], eth_mac[4], eth_mac[5]);
+}
+
+
 void app_main(void)
 {
     int temp_volume;
@@ -356,18 +423,54 @@ void app_main(void)
     tcpip_adapter_init();
 #endif
 
-    // current_station = 0; //force to first station during debugging
-    ESP_LOGI(TAG, "Start and wait for Wi-Fi network");
-    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-    periph_set = esp_periph_set_init(&periph_cfg); // Assign to static global
-    periph_wifi_cfg_t wifi_cfg = {
-        .wifi_config.sta.ssid = CONFIG_WIFI_SSID,
-        .wifi_config.sta.password = CONFIG_WIFI_PASSWORD,
-    };
-    esp_periph_handle_t wifi_handle = periph_wifi_init(&wifi_cfg);
-    esp_periph_start(periph_set, wifi_handle);
-    periph_wifi_wait_for_connected(wifi_handle, portMAX_DELAY);
+    wifi_event_group = xEventGroupCreate();
 
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+
+    esp_netif_create_default_wifi_sta();
+
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    wifi_prov_mgr_config_t config = {
+        .scheme = wifi_prov_scheme_ble,
+        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM
+    };
+
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+    bool provisioned = false;
+    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+
+    uint8_t custom_service_uuid[] = {
+        /* LSB <---------------------------------------
+         * ---------------------------------------> MSB */
+        0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
+        0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
+    };
+
+    if (!provisioned) {
+        ESP_LOGI(TAG, "Starting provisioning");
+
+        char service_name[20];
+        get_device_service_name(service_name, sizeof(service_name));
+
+        wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
+        ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, NULL, service_name, NULL));
+    }
+    else {
+        ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi");
+    }
+
+    ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
+    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+    ESP_LOGI(TAG, "Wi-Fi Connected.");
+
+    esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
+    periph_set = esp_periph_set_init(&periph_cfg);
 
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
@@ -375,7 +478,6 @@ void app_main(void)
     audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
     audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
-
 
 
     ESP_LOGI(TAG, "Set up  event listener");
