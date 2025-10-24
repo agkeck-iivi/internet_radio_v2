@@ -364,6 +364,13 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
+static void wifi_init_sta(void)
+{
+    /* Start Wi-Fi in station mode */
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
+}
+
 static void get_device_service_name(char* service_name, size_t max)
 {
     uint8_t eth_mac[6];
@@ -444,7 +451,7 @@ void app_main(void)
 
     bool provisioned = false;
     ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
-
+    // provisioned = false; // force provisioning for testing comment this line for production
     uint8_t custom_service_uuid[] = {
         /* LSB <---------------------------------------
          * ---------------------------------------> MSB */
@@ -463,6 +470,12 @@ void app_main(void)
     }
     else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi");
+        wifi_prov_mgr_deinit();
+
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+        /* Start Wi-Fi station */
+        wifi_init_sta();
+
     }
 
     ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
@@ -472,6 +485,9 @@ void app_main(void)
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     periph_set = esp_periph_set_init(&periph_cfg);
 
+
+    return;
+    
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
     audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
