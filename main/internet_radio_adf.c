@@ -478,8 +478,20 @@ void app_main(void)
 
     }
 
+    const TickType_t wifi_connect_timeout = pdMS_TO_TICKS(30000); // 30 seconds
     ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
-    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+    // we should probably have a timeout here.  If it can't connect, restart provisioning.
+    EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, wifi_connect_timeout);
+
+    if ((bits & WIFI_CONNECTED_BIT) == 0) {
+        ESP_LOGE(TAG, "Failed to connect to Wi-Fi within 30 seconds. Resetting provisioning and restarting.");
+        // Erase provisioning data
+        wifi_prov_mgr_reset_provisioning();
+        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay to allow logging
+        esp_restart();
+    }
+
+
     ESP_LOGI(TAG, "Wi-Fi Connected.");
 
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
@@ -487,7 +499,7 @@ void app_main(void)
 
 
     return;
-    
+
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
     audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
