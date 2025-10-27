@@ -12,6 +12,7 @@
 extern audio_pipeline_components_t audio_pipeline_components;
 
 static const char* TAG = "AUDIO_PIPELINE_MGR";
+volatile uint64_t g_bytes_read = 0;
 
 
 
@@ -34,20 +35,25 @@ const char* codec_type_to_string(codec_type_t codec)
 
 static int _http_stream_event_handle(http_stream_event_msg_t* msg)
 {
-    if (msg->event_id == HTTP_STREAM_RESOLVE_ALL_TRACKS)
-    {
+    switch (msg->event_id) {
+    case HTTP_STREAM_RESOLVE_ALL_TRACKS:
+        return ESP_OK;
+
+    case HTTP_STREAM_FINISH_TRACK:
+        return http_stream_next_track(msg->el);
+
+    case HTTP_STREAM_FINISH_PLAYLIST:
+        return http_stream_fetch_again(msg->el);
+
+    case HTTP_STREAM_ON_RESPONSE:
+        // This is called for each chunk of data received
+        g_bytes_read += msg->buffer_len;
+        // You could log it here, but it will be very verbose.
+        // ESP_LOGI(TAG, "Bytes read: %llu", g_bytes_read);
+        return msg->buffer_len; // Must return bytes processed
+    default:
         return ESP_OK;
     }
-
-    if (msg->event_id == HTTP_STREAM_FINISH_TRACK)
-    {
-        return http_stream_next_track(msg->el);
-    }
-    if (msg->event_id == HTTP_STREAM_FINISH_PLAYLIST)
-    {
-        return http_stream_fetch_again(msg->el);
-    }
-    return ESP_OK;
 }
 
 #include "board.h" // remove after debugging
