@@ -95,6 +95,9 @@ static button_handle_t station_up_btn_handle = NULL;
 /* Event group to signal when Wi-Fi is connected */
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;
+
+
+
 // Custom event definitions
 #define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
 #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
@@ -374,7 +377,7 @@ static void wifi_init_sta(void)
 static void get_device_service_name(char* service_name, size_t max)
 {
     uint8_t eth_mac[6];
-    const char* ssid_prefix = "agk radio mac:";
+    const char* ssid_prefix = "agk radio:";
     esp_wifi_get_mac(WIFI_IF_STA, eth_mac);
     snprintf(service_name, max, "%s%02X%02X%02X",
         ssid_prefix, eth_mac[3], eth_mac[4], eth_mac[5]);
@@ -470,16 +473,64 @@ void app_main(void)
     }
     else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi");
-        wifi_prov_mgr_deinit();
-
-        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-        /* Start Wi-Fi station */
-        wifi_init_sta();
-
     }
 
-    const TickType_t wifi_connect_timeout = portMAX_DELAY; // pdMS_TO_TICKS(30000); // 30 seconds
     ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
+    wifi_init_sta();
+    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true, portMAX_DELAY);
+    ESP_LOGI(TAG, "Wi-Fi Connected.");
+
+
+    // wifi_event_group = xEventGroupCreate();
+
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
+    // ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    // ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    // ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+
+    // esp_netif_create_default_wifi_sta();
+
+    // wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    // ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    // wifi_prov_mgr_config_t config = {
+    //     .scheme = wifi_prov_scheme_ble,
+    //     .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM
+    // };
+
+    // ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+    // bool provisioned = false;
+    // ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+    // provisioned = false; // force provisioning for testing comment this line for production
+    // uint8_t custom_service_uuid[] = {
+    //     /* LSB <---------------------------------------
+    //      * ---------------------------------------> MSB */
+    //     0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
+    //     0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
+    // };
+
+    // if (!provisioned) {
+    //     ESP_LOGI(TAG, "Starting provisioning");
+
+    //     char service_name[20];
+    //     get_device_service_name(service_name, sizeof(service_name));
+
+    //     wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
+    //     ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(WIFI_PROV_SECURITY_1, NULL, service_name, NULL));
+    // }
+    // else {
+    //     ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi");
+    //     wifi_prov_mgr_deinit();
+
+    //     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    //     /* Start Wi-Fi station */
+    //     wifi_init_sta();
+
+    // }
+
+    // const TickType_t wifi_connect_timeout = portMAX_DELAY; // pdMS_TO_TICKS(30000); // 30 seconds
+    // ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
     // we should probably have a timeout here.  If it can't connect, restart provisioning.
     // EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, wifi_connect_timeout);
 
@@ -501,7 +552,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
-    return;
     audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
     audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
@@ -515,8 +565,8 @@ void app_main(void)
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
 
 
-    ESP_LOGI(TAG, "Initializing buttons");
-    init_buttons();
+    // ESP_LOGI(TAG, "Initializing buttons");
+    // init_buttons();
 
 
     ESP_LOGI(TAG, "Starting initial stream: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
