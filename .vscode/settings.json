@@ -1,7 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.espIdfPath": "/home/agkeck/esp/esp-idf",
-  "idf.toolsPath": "/home/agkeck/.espressif",
+  "idf.espIdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp_idf/v5.5-rc1/esp-idf",
+  "idf.toolsPath": "/home/agkeck/esp/esp-idf_v5_5/tools",
   "idf.pythonInstallPath": "/usr/bin/python",
   "idf.port": "/dev/ttyACM0",
   "idf.flashType": "UART",
@@ -18,7 +18,8 @@
     "lcd1602.h": "c",
     "ratio": "c",
     "http_stream.h": "c",
-    "flac_decoder.h": "c"
+    "flac_decoder.h": "c",
+    "esp_peripherals.h": "c"
   },
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"

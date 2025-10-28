@@ -18,7 +18,7 @@
 #include "esp_wifi.h"
 #include "nvs_flash.h"
 #include "sdkconfig.h"
-#include "audio_pipeline_manager.h" // Include the new header
+#include "audio_pipeline_manager.h" 
 #include "audio_event_iface.h"
 #include "audio_common.h"
 #include "i2s_stream.h"
@@ -478,18 +478,18 @@ void app_main(void)
 
     }
 
-    const TickType_t wifi_connect_timeout = pdMS_TO_TICKS(30000); // 30 seconds
+    const TickType_t wifi_connect_timeout = portMAX_DELAY; // pdMS_TO_TICKS(30000); // 30 seconds
     ESP_LOGI(TAG, "Waiting for Wi-Fi connection...");
     // we should probably have a timeout here.  If it can't connect, restart provisioning.
-    EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, wifi_connect_timeout);
+    // EventBits_t bits = xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, pdFALSE, pdTRUE, wifi_connect_timeout);
 
-    if ((bits & WIFI_CONNECTED_BIT) == 0) {
-        ESP_LOGE(TAG, "Failed to connect to Wi-Fi within 30 seconds. Resetting provisioning and restarting.");
-        // Erase provisioning data
-        wifi_prov_mgr_reset_provisioning();
-        vTaskDelay(pdMS_TO_TICKS(2000)); // Delay to allow logging
-        esp_restart();
-    }
+    // if ((bits & WIFI_CONNECTED_BIT) == 0) {
+    //     ESP_LOGE(TAG, "Failed to connect to Wi-Fi within 30 seconds. Resetting provisioning and restarting.");
+    //     // Erase provisioning data
+    //     wifi_prov_mgr_reset_provisioning();
+    //     vTaskDelay(pdMS_TO_TICKS(2000)); // Delay to allow logging
+    //     esp_restart();
+    // }
 
 
     ESP_LOGI(TAG, "Wi-Fi Connected.");
@@ -498,11 +498,10 @@ void app_main(void)
     periph_set = esp_periph_set_init(&periph_cfg);
 
 
-    return;
 
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
-    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_DECODE, AUDIO_HAL_CTRL_START);
+    return;
     audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
     audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
