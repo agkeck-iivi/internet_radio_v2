@@ -383,6 +383,23 @@ static void get_device_service_name(char* service_name, size_t max)
         ssid_prefix, eth_mac[3], eth_mac[4], eth_mac[5]);
 }
 
+/**
+ * @brief Task to measure and log the data throughput in kbps.
+ */
+static void data_throughput_task(void* pvParameters)
+{
+    uint64_t last_bytes_read = 0;
+    while (1) {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        uint64_t current_bytes_read = g_bytes_read;
+        uint64_t bytes_read_in_last_second = current_bytes_read - last_bytes_read;
+        last_bytes_read = current_bytes_read;
+
+        float kbps = (float)(bytes_read_in_last_second * 8) / 1000.0f;
+
+        ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", kbps);
+    }
+}
 
 void app_main(void)
 {
@@ -426,7 +443,6 @@ void app_main(void)
         }
         nvs_close(nvs_handle);
     }
-
 #if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0))
     ESP_ERROR_CHECK(esp_netif_init());
 #else
@@ -588,6 +604,8 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
+
+    xTaskCreate(data_throughput_task, "data_throughput_task", 2048, NULL, 5, NULL);
 
     // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
     // static i2c_master_bus_handle_t i2c_bus;
