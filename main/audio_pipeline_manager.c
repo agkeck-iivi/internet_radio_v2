@@ -50,7 +50,7 @@ static int _http_stream_event_handle(http_stream_event_msg_t* msg)
         g_bytes_read += msg->buffer_len;
         // You could log it here, but it will be very verbose.
         // ESP_LOGI(TAG, "Bytes read: %llu", g_bytes_read);
-        return msg->buffer_len; // Must return bytes processed
+        return ESP_OK;
     default:
         return ESP_OK;
     }
