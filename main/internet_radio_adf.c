@@ -44,6 +44,9 @@
 #include "wifi_provisioning/scheme_ble.h"
 
 
+void task_test_ssd1306(void*); // for testing oled 128x64. remove after debugging
+
+
 // #include "lcd1602/lcd1602.h"
 
 
@@ -78,7 +81,7 @@ static const char* TAG = "INTERNET_RADIO";
 #define GPIO_ACTIVE_LOW     0
 
 // Volume control
-#define INITIAL_VOLUME 100
+#define INITIAL_VOLUME 50
 // #define VOLUME_STEP    10ed
 
 
@@ -462,6 +465,10 @@ void app_main(void)
     tcpip_adapter_init();
 #endif
 
+    // start oled display test task,  remove after debugging
+    xTaskCreate(task_test_ssd1306, "u8g2_task", 4096, NULL, 5, NULL);
+
+
     wifi_event_group = xEventGroupCreate();
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -621,7 +628,6 @@ void app_main(void)
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
     xTaskCreate(data_throughput_task, "data_throughput_task", 3 * 1024, NULL, 5, NULL);
-    // xTaskCreatePinnedToCore(data_throughput_task, "data_throughput_task", 3 * 1024, NULL, 5, NULL, 1);
 
 
     // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
