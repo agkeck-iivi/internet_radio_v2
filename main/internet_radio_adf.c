@@ -29,6 +29,7 @@
 
 #include "audio_idf_version.h"
 
+
 #if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0))
 #include "esp_netif.h"
 #else
@@ -88,6 +89,7 @@ audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
 
+static volatile float g_bitrate_kbps = 0.0f;
 // Button Handles
 static button_handle_t station_down_btn_handle = NULL;
 static button_handle_t station_up_btn_handle = NULL;
@@ -389,24 +391,35 @@ static void get_device_service_name(char* service_name, size_t max)
 static void data_throughput_task(void* pvParameters)
 {
     uint64_t last_bytes_read = 0;
+    uint64_t current_bytes_read;
+    uint64_t bytes_read_in_last_second;
+    int set_volume = 42;
+    int temp_volume;
     while (1) {
+        current_bytes_read = g_bytes_read;
         vTaskDelay(pdMS_TO_TICKS(1000));
-        uint64_t current_bytes_read = g_bytes_read;
-        uint64_t bytes_read_in_last_second = current_bytes_read - last_bytes_read;
+        bytes_read_in_last_second = current_bytes_read - last_bytes_read;
         last_bytes_read = current_bytes_read;
 
-        float kbps = (float)(bytes_read_in_last_second * 8) / 1000.0f;
+        g_bitrate_kbps = (float)(bytes_read_in_last_second * 8) / 1000.0f;
 
-        ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", kbps);
+        ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
+        // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(NULL);
+        // ESP_LOGI(TAG, "MyTask High Water Mark: %d bytes", highWaterMark);
+        // audio_hal_set_volume(board_handle->audio_hal, set_volume++);
+        // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+        // ESP_LOGI(TAG, "Current volume set to %d", temp_volume);
+
+
     }
 }
 
 void app_main(void)
 {
     int temp_volume;
-    // esp_log_level_set("*", ESP_LOG_DEBUG);
+    esp_log_level_set("*", ESP_LOG_DEBUG);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
-    esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
+    // esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
     esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND)
     {
@@ -568,6 +581,8 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Start audio codec chip");
     board_handle = audio_board_init(); // Assign to static global
+    // explicit start the codec, I'm not sure why it was not started elsewhere.
+    board_handle->audio_hal->audio_codec_ctrl(AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
     audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
     audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
@@ -605,7 +620,9 @@ void app_main(void)
     ESP_LOGI(TAG, "Start audio_pipeline");
     audio_pipeline_run(audio_pipeline_components.pipeline);
 
-    xTaskCreate(data_throughput_task, "data_throughput_task", 2048, NULL, 5, NULL);
+    xTaskCreate(data_throughput_task, "data_throughput_task", 3 * 1024, NULL, 5, NULL);
+    // xTaskCreatePinnedToCore(data_throughput_task, "data_throughput_task", 3 * 1024, NULL, 5, NULL, 1);
+
 
     // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
     // static i2c_master_bus_handle_t i2c_bus;

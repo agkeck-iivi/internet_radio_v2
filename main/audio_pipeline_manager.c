@@ -69,7 +69,7 @@ static esp_err_t codec_event_cb(audio_element_handle_t el, audio_event_iface_msg
             audio_element_getinfo(el, &music_info);
             ESP_LOGI(TAG, "[ * ] Callback: Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d",
                 music_info.sample_rates, music_info.bits, music_info.channels);
-            i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
+            ESP_ERROR_CHECK(i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels));
         }
     }
     return ESP_OK;

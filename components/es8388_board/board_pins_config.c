@@ -58,8 +58,8 @@ esp_err_t get_i2s_pins(int port, board_i2s_pin_t* i2s_config)
         i2s_config->mck_io_num = GPIO_NUM_16;
         i2s_config->bck_io_num = GPIO_NUM_7;
         i2s_config->ws_io_num = GPIO_NUM_5;
-        i2s_config->data_out_num = GPIO_NUM_4;
-        i2s_config->data_in_num = GPIO_NUM_6;
+        i2s_config->data_out_num = GPIO_NUM_6;  // This seems to be relative to esp32: data_out is din on es8388 board
+        i2s_config->data_in_num = GPIO_NUM_4;  // This seems to be relative to esp32: data_in is dout on es8388 board
     }
     else {
         memset(i2s_config, -1, sizeof(board_i2s_pin_t));

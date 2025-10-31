@@ -1,7 +1,7 @@
 {
   "C_Cpp.intelliSenseEngine": "default",
-  "idf.espIdfPath": "/home/agkeck/esp/esp-idf_v5_5/esp_idf/v5.5-rc1/esp-idf",
-  "idf.toolsPath": "/home/agkeck/esp/esp-idf_v5_5/tools",
+  "idf.espIdfPath": "/home/agkeck/esp/esp-idf",
+  "idf.toolsPath": "/home/agkeck/.espressif",
   "idf.pythonInstallPath": "/usr/bin/python",
   "idf.port": "/dev/ttyACM0",
   "idf.flashType": "UART",
