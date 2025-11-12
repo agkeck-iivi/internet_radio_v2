@@ -43,29 +43,8 @@
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h"
 
-
-void task_test_ssd1306(void*); // for testing oled 128x64. remove after debugging
-
-
-// #include "lcd1602/lcd1602.h"
-
-
-
-// note: the arduino library for reset sends 0x03 3 times, then 0x02 once
-//  0x03 wait 4500 us 0x03 wait 4500 us 0x03 wait 150 us 0x02
-// this library only sends it twice.
-// one of many resources: https://web.alfredstate.edu/faculty/weimandn/lcd/lcd_initialization/lcd_initialization_index.html
-
-
-
-
-// static lcd1602_context* ctx = NULL; // Global context for LCD
-
-// #define LCD_I2C_SDA     GPIO_NUM_21
-// #define LCD_I2C_SCL     GPIO_NUM_22
-// #define ESP_I2C_ADDRESS LCD1602_I2C_ADDRESS_DEFAULT
-
-// static    i2c_lowlevel_config config = { 0 };
+#include "lvgl_ssd1306_setup.h"
+#include "screens.h"
 
 
 static const char* TAG = "INTERNET_RADIO";
@@ -84,6 +63,9 @@ static const char* TAG = "INTERNET_RADIO";
 #define INITIAL_VOLUME 50
 // #define VOLUME_STEP    10ed
 
+// oled screen with lvgl
+
+static lv_display_t* display;
 
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
@@ -92,7 +74,7 @@ audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
 
-static volatile float g_bitrate_kbps = 0.0f;
+volatile float g_bitrate_kbps = 0.0f;
 // Button Handles
 static button_handle_t station_down_btn_handle = NULL;
 static button_handle_t station_up_btn_handle = NULL;
@@ -202,6 +184,8 @@ static void station_up_button_cb(void* arg, void* usr_data) {
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + 1) % station_count;
     save_current_station_to_nvs(current_station);
+    update_station_name(radio_stations[current_station].call_sign);
+    update_station_city(radio_stations[current_station].city);
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
@@ -241,6 +225,8 @@ static void station_down_button_cb(void* arg, void* usr_data) {
     destroy_audio_pipeline(&audio_pipeline_components);
     current_station = (current_station + station_count - 1) % station_count;
     save_current_station_to_nvs(current_station);
+    update_station_name(radio_stations[current_station].call_sign);
+    update_station_city(radio_stations[current_station].city);
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
 
@@ -405,8 +391,9 @@ static void data_throughput_task(void* pvParameters)
         last_bytes_read = current_bytes_read;
 
         g_bitrate_kbps = (float)(bytes_read_in_last_second * 8) / 1000.0f;
+        update_bitrate_label(g_bitrate_kbps);
 
-        ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
+        // ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
         // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(NULL);
         // ESP_LOGI(TAG, "MyTask High Water Mark: %d bytes", highWaterMark);
         // audio_hal_set_volume(board_handle->audio_hal, set_volume++);
@@ -419,6 +406,11 @@ static void data_throughput_task(void* pvParameters)
 
 void app_main(void)
 {
+    display = lvgl_ssd1306_setup();
+    create_home_screen(display);
+    update_station_name(radio_stations[current_station].call_sign);
+    update_station_city(radio_stations[current_station].city);
+
     int temp_volume;
     esp_log_level_set("*", ESP_LOG_DEBUG);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -466,7 +458,7 @@ void app_main(void)
 #endif
 
     // start oled display test task,  remove after debugging
-    xTaskCreate(task_test_ssd1306, "u8g2_task", 4096, NULL, 5, NULL);
+    // xTaskCreate(task_test_ssd1306, "u8g2_task", 4096, NULL, 5, NULL);
 
 
     wifi_event_group = xEventGroupCreate();

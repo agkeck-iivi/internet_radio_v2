@@ -1,0 +1,38 @@
+#ifndef SCREENS_H
+#define SCREENS_H
+
+#include "lvgl.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+    /**
+     * @brief Creates the home screen UI on the given display.
+     * @param disp Pointer to the LVGL display.
+     */
+    void create_home_screen(lv_display_t* disp);
+
+    /**
+     * @brief Updates the station name label on the screen.
+     * @param name The new station name to display.
+     */
+    void update_station_name(const char* name);
+
+    /**
+     * @brief Updates the station city label on the screen.
+     * @param city The new city name to display.
+     */
+    void update_station_city(const char* city);
+
+    /**
+     * @brief Updates the bitrate label on the screen.
+     * @param bitrate The new bitrate value in kbps.
+     */
+    void update_bitrate_label(float bitrate);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // SCREENS_H

@@ -19,7 +19,9 @@
     "ratio": "c",
     "http_stream.h": "c",
     "flac_decoder.h": "c",
-    "esp_peripherals.h": "c"
+    "esp_peripherals.h": "c",
+    "lock.h": "c",
+    "freertos.h": "c"
   },
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"
