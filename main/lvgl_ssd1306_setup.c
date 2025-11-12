@@ -12,33 +12,16 @@
 #include "lvgl.h"
 
 
-
-// #include <stdio.h>
-// #include <unistd.h>
-// #include <sys/lock.h>
-// #include <sys/param.h>
-// #include "freertos/FreeRTOS.h"
-// #include "freertos/task.h"
-// #include "esp_timer.h"
-// #include "esp_lcd_panel_io.h"
-// #include "esp_lcd_panel_ops.h"
-// #include "esp_err.h"
-// #include "esp_log.h"
-// #include "driver/spi_master.h"
-// #include "lvgl.h"
-
 #include "esp_lcd_panel_vendor.h"
 
 
 static const char* TAG = "init_lvgl_ssd1306";
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////// Please update the following configuration according to your LCD spec //////////////////////////////
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// pin, geometry, and lvgl parameter configurations.
 #define LCD_PIXEL_CLOCK_HZ (4 * 1000 * 1000)
 #define LCD_HOST SPI2_HOST
-#define PIN_NUM_SCLK 12
-#define PIN_NUM_MOSI 11
+#define PIN_NUM_SCLK 11 //12
+#define PIN_NUM_MOSI 12 //11
 #define PIN_NUM_RST 13
 #define PIN_NUM_DC 14
 #define PIN_NUM_CS 8
@@ -62,7 +45,7 @@ static uint8_t oled_buffer[LCD_H_RES * LCD_V_RES / 8];
 // LVGL library is not thread-safe, this example will call LVGL APIs from different tasks, so use a mutex to protect it
 static _lock_t lvgl_api_lock;
 
-extern void radio_home_screen_create(lv_disp_t* disp);
+// extern void radio_home_screen_create(lv_disp_t* disp);
 
 static bool notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t io_panel, esp_lcd_panel_io_event_data_t* edata, void* user_ctx)
 {

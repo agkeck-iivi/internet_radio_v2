@@ -13,11 +13,6 @@ static lv_obj_t* bitrate_label = NULL;
 static lv_obj_t* callsign_label = NULL;
 static lv_obj_t* city_label = NULL;
 
-// // Function to update the bitrate value
-// void update_bitrate(float new_bitrate)
-// {
-//     bitrate = new_bitrate;
-// }
 
 void update_bitrate_label(float bitrate)
 {
