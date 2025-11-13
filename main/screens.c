@@ -64,7 +64,7 @@ void create_home_screen(lv_display_t* disp)
     lv_obj_set_size(volume_slider, slider_width, screen_height);
     lv_obj_align(volume_slider, LV_ALIGN_LEFT_MID, 0, 0);
     lv_slider_set_range(volume_slider, 0, 100);
-    lv_slider_set_value(volume_slider, 50, LV_ANIM_OFF);
+    lv_slider_set_value(volume_slider, 0, LV_ANIM_OFF);
 
     // Apply styles for a rounded rectangular appearance
     lv_obj_set_style_radius(volume_slider, LV_RADIUS_CIRCLE, LV_PART_MAIN);

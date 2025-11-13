@@ -62,7 +62,7 @@ static const char* TAG = "INTERNET_RADIO";
 #define GPIO_ACTIVE_LOW     0
 
 // Volume control
-#define INITIAL_VOLUME 50
+#define INITIAL_VOLUME 0
 // #define VOLUME_STEP    10ed
 
 // oled screen with lvgl
@@ -72,7 +72,7 @@ static lv_display_t* display;
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
 static int current_station = 0;
-audio_board_handle_t board_handle = NULL;  // make this global during debugging
+static audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
 
@@ -649,7 +649,7 @@ void app_main(void)
 
     //  start encoder pulse counters
 
-    init_encoders(board_handle);
+    init_encoders(board_handle, initial_volume);
     // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
     // static i2c_master_bus_handle_t i2c_bus;
     // i2c_master_bus_config_t bus_cfg = {

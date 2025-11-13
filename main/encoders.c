@@ -5,7 +5,7 @@
  */
 
 #include "encoders.h"
-//  #include "sdkconfig.h"
+ //  #include "sdkconfig.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
@@ -155,7 +155,7 @@ void update_cyclic_value(void* pvParameters)
     }
 }
 
-void init_encoders(audio_board_handle_t board_handle)
+void init_encoders(audio_board_handle_t board_handle, int initial_volume)
 {
     // Configure GPIOs for the rotary encoder with pull-up resistors
     gpio_config_t encoder_gpio_config = {
@@ -215,12 +215,12 @@ void init_encoders(audio_board_handle_t board_handle)
     // // enable volume pulse counter
     limited_pulse_counter_t volume_counter;
     volume_counter.pcnt_unit = volume_pcnt_unit;
-    volume_counter.value = 70; // this will be read from NVS in real application
-    volume_counter.adjust = 70;
+    volume_counter.value = initial_volume;
+    volume_counter.adjust = initial_volume;
     volume_counter.speed = 2; // number of units of volume per encoder step
     volume_counter.board_handle = board_handle;
     ESP_LOGI(TAG, "start volume update task");
-    xTaskCreate(update_limited_pulse_counter, "update_limited_pulse_counter", 4*1024, &volume_counter, 5, NULL);
+    xTaskCreate(update_limited_pulse_counter, "update_limited_pulse_counter", 4 * 1024, &volume_counter, 5, NULL);
 
     // enable cyclic counter
 
