@@ -29,6 +29,10 @@ static const char* TAG = "encoders";
 #define VOLUME_GPIO_B 42
 #define VOLUME_PRESS_GPIO 1
 
+// polling periods
+#define VOLUME_POLLING_PERIOD_MS 100
+#define VOLUME_PRESS_POLLING_PERIOD_MS 100
+
 typedef struct
 {
     pcnt_unit_handle_t pcnt_unit;
@@ -80,7 +84,7 @@ static void save_volume_to_nvs(int volume)
 // update the volume by clamping to range 0-100.  The adjust parameter is used to adapt the current
 // pulse count to the clamped volume.  In this way one can adjust well below 0 but after ajustment it only
 // take a click to get back above 0.
-void update_limited_pulse_counter(void* pvParameters)
+void update_volume_pulse_counter(void* pvParameters)
 {
     limited_pulse_counter_t* counter = (limited_pulse_counter_t*)pvParameters;
     g_volume_counter_ptr = counter; // Store pointer for global access
@@ -128,7 +132,7 @@ void update_limited_pulse_counter(void* pvParameters)
             save_volume_to_nvs(new_volume);
         }
 
-        vTaskDelay(pdMS_TO_TICKS(200)); // Poll for volume changes
+        vTaskDelay(pdMS_TO_TICKS(VOLUME_POLLING_PERIOD_MS)); // Poll for volume changes
     }
 }
 
@@ -173,7 +177,7 @@ static void volume_press_task(void* pvParameters)
             // Debounce after release
             vTaskDelay(pdMS_TO_TICKS(50));
         }
-        vTaskDelay(pdMS_TO_TICKS(20)); // Poll every 20ms
+        vTaskDelay(pdMS_TO_TICKS(VOLUME_PRESS_POLLING_PERIOD_MS)); //
     }
 }
 
@@ -297,7 +301,7 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
     volume_counter->speed = 5; // number of units of volume per encoder step
     volume_counter->board_handle = board_handle;
     ESP_LOGI(TAG, "start volume update task");
-    xTaskCreate(update_limited_pulse_counter, "update_limited_pulse_counter", 4 * 1024, volume_counter, 5, NULL);
+    xTaskCreate(update_volume_pulse_counter, "update_volume_pulse_counter", 4 * 1024, volume_counter, 5, NULL);
 
     xTaskCreate(volume_press_task, "volume_press_task", 2048, NULL, 5, NULL);
 
