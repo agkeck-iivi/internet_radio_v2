@@ -46,6 +46,11 @@ typedef struct
     int num_values;
 } cyclic_pulse_counter_t;
 
+// Mute functionality state
+static bool is_muted = false;
+static int volume_before_mute = 0;
+static limited_pulse_counter_t* g_volume_counter_ptr = NULL; // Pointer to the volume counter for shared access
+
 static void save_volume_to_nvs(int volume)
 {
     nvs_handle_t nvs_handle;
@@ -78,6 +83,21 @@ static void save_volume_to_nvs(int volume)
 void update_limited_pulse_counter(void* pvParameters)
 {
     limited_pulse_counter_t* counter = (limited_pulse_counter_t*)pvParameters;
+    g_volume_counter_ptr = counter; // Store pointer for global access
+
+    // Restore initial volume to PCNT counter state
+    // The counter is at 0, so we need to adjust it to match the initial volume
+    int initial_count_offset = (counter->value - counter->adjust) * 4 / counter->speed;
+    pcnt_unit_clear_count(counter->pcnt_unit);
+    // This is a bit of a hack to set the counter. There's no direct 'set_count'
+    if (initial_count_offset != 0) {
+        // We can't directly set the count, but we can adjust our 'adjust' value
+        // so that the next calculation is correct.
+        // The formula is: new_volume = count / 4 * speed + adjust
+        // We want new_volume to be initial_volume when count is 0.
+        counter->adjust = counter->value;
+    }
+
     for (;;)
     {
         int count;
@@ -95,6 +115,12 @@ void update_limited_pulse_counter(void* pvParameters)
         }
         if (new_volume != counter->value)
         {
+            // If muted and user changes volume, unmute first
+            if (is_muted) {
+                is_muted = false;
+                ESP_LOGI(TAG, "Unmuted by volume change");
+            }
+
             counter->value = new_volume;
             ESP_LOGI(TAG, "Setting volume to: %d", new_volume);
             audio_hal_set_volume(counter->board_handle->audio_hal, new_volume);
@@ -105,6 +131,53 @@ void update_limited_pulse_counter(void* pvParameters)
         vTaskDelay(pdMS_TO_TICKS(200)); // Poll for volume changes
     }
 }
+
+static void volume_press_task(void* pvParameters)
+{
+    ESP_LOGI(TAG, "Volume press button task started.");
+    while (1) {
+        if (gpio_get_level(VOLUME_PRESS_GPIO) == 0) { // Button is pressed (active low)
+            // Debounce delay
+            vTaskDelay(pdMS_TO_TICKS(50));
+            // Wait for button release
+            while (gpio_get_level(VOLUME_PRESS_GPIO) == 0) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+
+            is_muted = !is_muted; // Toggle mute state
+
+            if (is_muted) {
+                ESP_LOGI(TAG, "Muting volume");
+                // Save current volume and mute
+                if (g_volume_counter_ptr) {
+                    volume_before_mute = g_volume_counter_ptr->value;
+                }
+                audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal, 0);
+                update_volume_slider(0);
+                // We don't save mute state to NVS, so it always starts unmuted
+            }
+            else {
+                ESP_LOGI(TAG, "Unmuting volume to %d", volume_before_mute);
+                // Restore volume
+                if (g_volume_counter_ptr) {
+                    // Sync counter state with the restored volume
+                    g_volume_counter_ptr->value = volume_before_mute;
+                    g_volume_counter_ptr->adjust = volume_before_mute;
+                    pcnt_unit_clear_count(g_volume_counter_ptr->pcnt_unit);
+
+                    audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal, volume_before_mute);
+                    update_volume_slider(volume_before_mute);
+                    save_volume_to_nvs(volume_before_mute);
+                }
+            }
+            // Debounce after release
+            vTaskDelay(pdMS_TO_TICKS(50));
+        }
+        vTaskDelay(pdMS_TO_TICKS(20)); // Poll every 20ms
+    }
+}
+
+
 
 void update_cyclic_value(void* pvParameters)
 {
@@ -212,15 +285,21 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
     ESP_LOGI(TAG, "start pcnt unit");
     ESP_ERROR_CHECK(pcnt_unit_start(volume_pcnt_unit));
 
-    // // enable volume pulse counter
-    limited_pulse_counter_t volume_counter;
-    volume_counter.pcnt_unit = volume_pcnt_unit;
-    volume_counter.value = initial_volume;
-    volume_counter.adjust = initial_volume;
-    volume_counter.speed = 2; // number of units of volume per encoder step
-    volume_counter.board_handle = board_handle;
+    // Use heap allocation for the counter so it can be shared
+    limited_pulse_counter_t* volume_counter = malloc(sizeof(limited_pulse_counter_t));
+    if (!volume_counter) {
+        ESP_LOGE(TAG, "Failed to allocate memory for volume counter");
+        return;
+    }
+    volume_counter->pcnt_unit = volume_pcnt_unit;
+    volume_counter->value = initial_volume;
+    volume_counter->adjust = initial_volume;
+    volume_counter->speed = 5; // number of units of volume per encoder step
+    volume_counter->board_handle = board_handle;
     ESP_LOGI(TAG, "start volume update task");
-    xTaskCreate(update_limited_pulse_counter, "update_limited_pulse_counter", 4 * 1024, &volume_counter, 5, NULL);
+    xTaskCreate(update_limited_pulse_counter, "update_limited_pulse_counter", 4 * 1024, volume_counter, 5, NULL);
+
+    xTaskCreate(volume_press_task, "volume_press_task", 2048, NULL, 5, NULL);
 
     // enable cyclic counter
 
