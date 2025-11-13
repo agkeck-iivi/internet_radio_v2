@@ -46,6 +46,8 @@
 #include "lvgl_ssd1306_setup.h"
 #include "screens.h"
 
+#include "encoders.h"
+
 
 static const char* TAG = "INTERNET_RADIO";
 
@@ -410,6 +412,8 @@ void app_main(void)
     create_home_screen(display);
     update_station_name(radio_stations[current_station].call_sign);
     update_station_city(radio_stations[current_station].city);
+    int initial_volume = INITIAL_VOLUME;
+
 
     int temp_volume;
     esp_log_level_set("*", ESP_LOG_DEBUG);
@@ -448,6 +452,27 @@ void app_main(void)
             break;
         default:
             ESP_LOGE(TAG, "Error (%s) reading!", esp_err_to_name(err));
+        }
+
+        // Read volume from NVS
+        ESP_LOGI(TAG, "Reading volume from NVS");
+        int32_t volume_from_nvs = INITIAL_VOLUME;
+        err = nvs_get_i32(nvs_handle, "volume", &volume_from_nvs);
+        switch (err) {
+        case ESP_OK:
+            ESP_LOGI(TAG, "Successfully read volume = %d", (int)volume_from_nvs);
+            if (volume_from_nvs >= 0 && volume_from_nvs <= 100) {
+                initial_volume = volume_from_nvs;
+            }
+            else {
+                ESP_LOGW(TAG, "Invalid volume %d found in NVS, defaulting to %d", (int)volume_from_nvs, INITIAL_VOLUME);
+            }
+            break;
+        case ESP_ERR_NVS_NOT_FOUND:
+            ESP_LOGI(TAG, "The value 'volume' is not initialized yet!");
+            break;
+        default:
+            ESP_LOGE(TAG, "Error (%s) reading 'volume'!", esp_err_to_name(err));
         }
         nvs_close(nvs_handle);
     }
@@ -582,7 +607,8 @@ void app_main(void)
     board_handle = audio_board_init(); // Assign to static global
     // explicit start the codec, I'm not sure why it was not started elsewhere.
     board_handle->audio_hal->audio_codec_ctrl(AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-    audio_hal_set_volume(board_handle->audio_hal, INITIAL_VOLUME);
+    audio_hal_set_volume(board_handle->audio_hal, initial_volume);
+    update_volume_slider(initial_volume);
     audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
     ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
 
@@ -621,7 +647,9 @@ void app_main(void)
 
     xTaskCreate(data_throughput_task, "data_throughput_task", 3 * 1024, NULL, 5, NULL);
 
+    //  start encoder pulse counters
 
+    init_encoders(board_handle);
     // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
     // static i2c_master_bus_handle_t i2c_bus;
     // i2c_master_bus_config_t bus_cfg = {

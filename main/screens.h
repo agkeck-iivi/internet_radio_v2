@@ -31,6 +31,12 @@ extern "C" {
      */
     void update_bitrate_label(float bitrate);
 
+    /**
+     * @brief Updates the volume slider on the screen.
+     * @param volume The new volume value (0-100).
+     */
+    void update_volume_slider(int volume);
+
 #ifdef __cplusplus
 }
 #endif

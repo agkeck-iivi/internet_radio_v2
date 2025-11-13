@@ -21,7 +21,9 @@
     "flac_decoder.h": "c",
     "esp_peripherals.h": "c",
     "lock.h": "c",
-    "freertos.h": "c"
+    "freertos.h": "c",
+    "board.h": "c",
+    "sdkconfig.h": "c"
   },
   "idf.openOcdConfigs": [
     "board/esp32s3-builtin.cfg"

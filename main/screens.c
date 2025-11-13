@@ -12,6 +12,7 @@ extern float g_bitrate_kbps;
 static lv_obj_t* bitrate_label = NULL;
 static lv_obj_t* callsign_label = NULL;
 static lv_obj_t* city_label = NULL;
+static lv_obj_t* volume_slider = NULL;
 
 
 void update_bitrate_label(float bitrate)
@@ -35,6 +36,14 @@ void update_station_city(const char* city)
     }
 }
 
+void update_volume_slider(int volume)
+{
+    if (volume_slider)
+    {
+        lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
+    }
+}
+
 void create_home_screen(lv_display_t* disp)
 {
     lv_obj_t* scr = lv_display_get_screen_active(disp);
@@ -50,7 +59,7 @@ void create_home_screen(lv_display_t* disp)
     lv_coord_t screen_height = lv_display_get_vertical_resolution(disp);
 
     // 1. Volume Control Slider
-    lv_obj_t* volume_slider = lv_slider_create(scr);
+    volume_slider = lv_slider_create(scr);
     lv_coord_t slider_width = 6; // Width of the volume slider
     lv_obj_set_size(volume_slider, slider_width, screen_height);
     lv_obj_align(volume_slider, LV_ALIGN_LEFT_MID, 0, 0);
