@@ -71,7 +71,7 @@ static lv_display_t* display;
 
 // Static global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
-static int current_station = 0;
+int current_station = 0;
 static audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;

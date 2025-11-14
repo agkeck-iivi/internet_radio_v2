@@ -25,6 +25,9 @@ static const char* TAG = "encoders";
 
 // extern audio_board_handle_t board_handle;
 
+extern int station_count;
+extern int current_station;
+
 #define VOLUME_GPIO_A 2
 #define VOLUME_GPIO_B 42
 #define VOLUME_PRESS_GPIO 1
@@ -349,8 +352,8 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
 
     static cyclic_pulse_counter_t cyclic_counter;
     cyclic_counter.pcnt_unit = station_pcnt_unit;
-    cyclic_counter.num_values = 10;
-    cyclic_counter.current_index = 0; // this will be read from NVS in real appliation
+    cyclic_counter.num_values = station_count;
+    cyclic_counter.current_index = current_station;
     xTaskCreate(update_cyclic_value, "update_cyclic_value", 2048, &cyclic_counter, 5, NULL);
 
 }
