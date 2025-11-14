@@ -18,26 +18,29 @@ static lv_obj_t* city_label = NULL;
 static lv_obj_t* volume_slider = NULL;
 static lv_obj_t* station_roller = NULL;
 
+static lv_obj_t* home_screen_obj = NULL;
+static lv_obj_t* station_selection_screen_obj = NULL;
+
 
 
 void update_bitrate_label(float bitrate)
 {
     if (bitrate_label)
     {
-        // lv_label_set_text_fmt(bitrate_label, "%d KBPS", (int)bitrate);
+        lv_label_set_text_fmt(bitrate_label, "%d KBPS", (int)bitrate);
     }
 }
 void update_station_name(const char* name)
 {
     if (callsign_label) {
-        // lv_label_set_text(callsign_label, name);
+        lv_label_set_text(callsign_label, name);
     }
 }
 
 void update_station_city(const char* city)
 {
     if (city_label) {
-        // lv_label_set_text(city_label, city);
+        lv_label_set_text(city_label, city);
     }
 }
 
@@ -45,8 +48,7 @@ void update_volume_slider(int volume)
 {
     if (volume_slider)
     {
-        // disable update while debugging station select
-        // lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
+        lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
     }
 }
 
@@ -58,22 +60,14 @@ void update_station_roller(int new_station_index)
     }
 }
 
-void create_home_screen(lv_display_t* disp)
+static void create_home_screen_widgets(lv_obj_t* parent)
 {
-    lv_obj_t* scr = lv_display_get_screen_active(disp);
-    // lv_obj_t *label = lv_label_create(scr);
-    // lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR); /* Circular scroll */
-    // lv_label_set_text(label, "Hello Espressif, Hello LVGL.");
-    // /* Size of the screen (if you use rotation 90 or 270, please use lv_display_get_vertical_resolution) */
-    // lv_obj_set_width(label, lv_display_get_horizontal_resolution(disp));
-    // lv_obj_align(label, LV_ALIGN_TOP_MID, 0, 0);
-    lv_obj_clean(scr); // Clear existing widgets on the screen
-
+    lv_display_t* disp = lv_display_get_default();
     lv_coord_t screen_width = lv_display_get_horizontal_resolution(disp);
     lv_coord_t screen_height = lv_display_get_vertical_resolution(disp);
 
     // 1. Volume Control Slider
-    volume_slider = lv_slider_create(scr);
+    volume_slider = lv_slider_create(parent);
     lv_coord_t slider_width = 6; // Width of the volume slider
     lv_obj_set_size(volume_slider, slider_width, screen_height);
     lv_obj_align(volume_slider, LV_ALIGN_LEFT_MID, 0, 0);
@@ -106,7 +100,7 @@ void create_home_screen(lv_display_t* disp)
 
     // 3. Container for Call Sign and City text
     // This container will take up the remaining width of the screen to the right of the slider
-    lv_obj_t* text_container = lv_obj_create(scr);
+    lv_obj_t* text_container = lv_obj_create(parent);
     lv_obj_set_size(text_container, screen_width - slider_width, screen_height);
     lv_obj_align_to(text_container, volume_slider, LV_ALIGN_OUT_RIGHT_TOP, 0, 0);
     lv_obj_set_style_bg_opa(text_container, LV_OPA_TRANSP, 0); // Transparent background
@@ -130,14 +124,8 @@ void create_home_screen(lv_display_t* disp)
     lv_obj_set_style_text_font(bitrate_label, &lv_font_montserrat_14, 0); // Use default font for smaller text
 }
 
-void create_station_selection_screen(lv_display_t* disp)
+static void create_station_selection_screen_widgets(lv_obj_t* parent)
 {
-    lv_obj_t* scr = lv_display_get_screen_active(disp);
-    lv_obj_clean(scr); // Clear existing widgets on the screen
-
-    // Create a horizontal line in the middle of the screen
-    // lv_coord_t screen_width = lv_display_get_horizontal_resolution(disp);
-    // lv_coord_t screen_height = lv_display_get_vertical_resolution(disp);
     // lv_coord_t line_width_pct = 90;
     // lv_coord_t line_width = (screen_width * line_width_pct) / 100;
     // lv_coord_t line_y = screen_height / 2;
@@ -169,7 +157,7 @@ void create_station_selection_screen(lv_display_t* disp)
     }
 
     /*Create a roller*/
-    station_roller = lv_roller_create(scr);
+    station_roller = lv_roller_create(parent);
     lv_roller_set_options(station_roller,
         roller_options,
         LV_ROLLER_MODE_INFINITE);
@@ -190,4 +178,26 @@ void create_station_selection_screen(lv_display_t* disp)
 
     // // Event handler for when the roller value changes
     // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);
+}
+
+void screens_init(lv_display_t* disp)
+{
+    home_screen_obj = lv_obj_create(NULL);
+    station_selection_screen_obj = lv_obj_create(NULL);
+
+    create_home_screen_widgets(home_screen_obj);
+    create_station_selection_screen_widgets(station_selection_screen_obj);
+
+    // Start on the home screen
+    lv_screen_load(home_screen_obj);
+}
+
+void switch_to_home_screen(void)
+{
+    lv_screen_load(home_screen_obj);
+}
+
+void switch_to_station_selection_screen(void)
+{
+    lv_screen_load(station_selection_screen_obj);
 }

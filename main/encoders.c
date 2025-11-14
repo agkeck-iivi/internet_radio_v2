@@ -19,7 +19,9 @@
 #include <limits.h>
 
 #include "screens.h"
+#include "station_data.h"
 #include "board.h"
+#include "internet_radio_adf.h"
 
 static const char* TAG = "encoders";
 
@@ -59,6 +61,8 @@ typedef struct
     const int* values;
     int num_values;
 } cyclic_pulse_counter_t;
+static cyclic_pulse_counter_t* g_station_counter_ptr = NULL;
+
 
 // Mute functionality state
 static bool is_muted = false;
@@ -191,20 +195,20 @@ static void volume_press_task(void* pvParameters)
     }
 }
 
-
-
 void update_cyclic_value(void* pvParameters)
 {
     cyclic_pulse_counter_t* counter = (cyclic_pulse_counter_t*)pvParameters;
     int last_step_count = 0;
     ESP_ERROR_CHECK(pcnt_unit_get_count(counter->pcnt_unit, &last_step_count));
-    last_step_count /= 1; // Each detent is 2 counts
+    last_step_count /= 4; // Each detent is 4 counts for a full cycle
+
+    bool on_station_screen = false;
 
     for (;;)
     {
-        const int fast_poll_ms = 20;           // 4 times per second
-        const int slow_poll_ms = 1000;          // 1 time per second
-        const int inactivity_timeout_ms = 1000; // dwell time (ms) before triggering action
+        const int fast_poll_ms = 50;
+        const int slow_poll_ms = 200;
+        const int inactivity_timeout_ms = 2000; // 2 seconds before action
         static int current_poll_ms = slow_poll_ms;
         static TickType_t last_change_time = 0;
 
@@ -214,6 +218,13 @@ void update_cyclic_value(void* pvParameters)
 
         if (current_step_count != last_step_count)
         {
+            // A change occurred, switch to station screen if not already there
+            if (!on_station_screen) {
+                on_station_screen = true;
+                ESP_LOGI(TAG, "Encoder turned, switching to station selection screen");
+                switch_to_station_selection_screen();
+            }
+
             int step_delta = current_step_count - last_step_count;
 
             // Update index with wrapping
@@ -223,10 +234,8 @@ void update_cyclic_value(void* pvParameters)
                 new_index += counter->num_values;
             }
             counter->current_index = new_index;
-            // counter->current_value = counter->values[counter->current_index];
             ESP_LOGI(TAG, "Cyclic index: %d", counter->current_index);
             update_station_roller(counter->current_index);
-            // save_current_station_to_nvs(counter->current_index);
             last_step_count = current_step_count;
 
             // A change occurred, switch to fast polling and record the time
@@ -235,12 +244,24 @@ void update_cyclic_value(void* pvParameters)
         }
         else if (current_poll_ms == fast_poll_ms && (xTaskGetTickCount() - last_change_time) > pdMS_TO_TICKS(inactivity_timeout_ms))
         {
-            // Inactivity timeout reached, switch back to slow polling
-            // perform change action here.
-            ESP_LOGI(TAG, "Trigger the action");
+            // Inactivity timeout reached, perform action and switch back to slow polling
+            ESP_LOGI(TAG, "Inactivity timeout, changing station to index %d", counter->current_index);
+        
+            change_station(counter->current_index);
+            switch_to_home_screen();
+
             current_poll_ms = slow_poll_ms;
+            on_station_screen = false;
         }
         vTaskDelay(pdMS_TO_TICKS(current_poll_ms));
+    }
+}
+
+void sync_station_encoder_index(void)
+{
+    if (g_station_counter_ptr) {
+        g_station_counter_ptr->current_index = current_station;
+        ESP_LOGI(TAG, "Synced station encoder index to %d", current_station);
     }
 }
 
@@ -352,10 +373,11 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
     ESP_LOGI(TAG, "start pcnt unit");
     ESP_ERROR_CHECK(pcnt_unit_start(station_pcnt_unit));
 
-    static cyclic_pulse_counter_t cyclic_counter;
-    cyclic_counter.pcnt_unit = station_pcnt_unit;
-    cyclic_counter.num_values = station_count;
-    cyclic_counter.current_index = current_station;
-    xTaskCreate(update_cyclic_value, "update_cyclic_value", 2048, &cyclic_counter, 5, NULL);
+    // Use malloc to keep it in scope for the task and for sync function
+    g_station_counter_ptr = malloc(sizeof(cyclic_pulse_counter_t));
+    g_station_counter_ptr->pcnt_unit = station_pcnt_unit;
+    g_station_counter_ptr->num_values = station_count;
+    g_station_counter_ptr->current_index = current_station;
 
+    xTaskCreate(update_cyclic_value, "update_cyclic_value", 4*1024, g_station_counter_ptr, 5, NULL);
 }

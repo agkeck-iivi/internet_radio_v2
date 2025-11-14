@@ -79,10 +79,6 @@ static esp_periph_set_handle_t periph_set = NULL;
 
 volatile float g_bitrate_kbps = 0.0f;
 // Button Handles
-static button_handle_t station_down_btn_handle = NULL;
-static button_handle_t station_up_btn_handle = NULL;
-
-/* Event group to signal when Wi-Fi is connected */
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;
 
@@ -145,18 +141,25 @@ static void save_current_station_to_nvs(int station_index)
 //     }
 // }
 
-static void station_up_button_cb(void* arg, void* usr_data) {
+void change_station(int new_station_index)
+{
     esp_err_t ret;
 
-    ESP_LOGI(TAG, "Station Up Button Pressed");
+    if (new_station_index < 0 || new_station_index >= station_count) {
+        ESP_LOGE(TAG, "Invalid station index: %d", new_station_index);
+        return;
+    }
+
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
-    current_station = (current_station + 1) % station_count;
+
+    current_station = new_station_index;
+    ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
+    sync_station_encoder_index(); // Sync encoder's internal state
     save_current_station_to_nvs(current_station);
     update_station_name(radio_stations[current_station].call_sign);
     update_station_city(radio_stations[current_station].city);
     ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
-
 
     ret = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
@@ -166,114 +169,11 @@ static void station_up_button_cb(void* arg, void* usr_data) {
         return;
     }
 
-    if (audio_pipeline_components.pipeline && evt) {
-        ESP_LOGI(TAG, "Setting listener for new pipeline");
-        ESP_LOGI(TAG, "Starting new audio pipeline");
-        ret = audio_pipeline_run(audio_pipeline_components.pipeline);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to run new audio pipeline. Error: %d", ret);
-            destroy_audio_pipeline(&audio_pipeline_components);
-        }
-        else {
-            ESP_LOGI(TAG, "Successfully switched to station: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
-        }
-    }
-    else {
-        ESP_LOGE(TAG, "Pipeline or event handle is NULL after create_audio_pipeline. Cannot start.");
-        if (audio_pipeline_components.pipeline) {
-            destroy_audio_pipeline(&audio_pipeline_components);
-        }
-    }
-}
-
-static void station_down_button_cb(void* arg, void* usr_data) {
-    esp_err_t ret;
-
-    ESP_LOGI(TAG, "Station Up Button Pressed");
-    ESP_LOGI(TAG, "Destroying current pipeline...");
-    destroy_audio_pipeline(&audio_pipeline_components);
-    current_station = (current_station + station_count - 1) % station_count;
-    save_current_station_to_nvs(current_station);
-    update_station_name(radio_stations[current_station].call_sign);
-    update_station_city(radio_stations[current_station].city);
-    ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
-
-
-    ret = create_audio_pipeline(&audio_pipeline_components,
-        radio_stations[current_station].codec,
-        radio_stations[current_station].uri);
+    ESP_LOGI(TAG, "Starting new audio pipeline");
+    ret = audio_pipeline_run(audio_pipeline_components.pipeline);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to create new audio pipeline for station %s, %s. Error: %d", radio_stations[current_station].call_sign, radio_stations[current_station].city, ret);
-        return;
-    }
-
-    if (audio_pipeline_components.pipeline && evt) {
-        ESP_LOGI(TAG, "Setting listener for new pipeline");
-        ESP_LOGI(TAG, "Starting new audio pipeline");
-        ret = audio_pipeline_run(audio_pipeline_components.pipeline);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to run new audio pipeline. Error: %d", ret);
-            destroy_audio_pipeline(&audio_pipeline_components);
-        }
-        else {
-            ESP_LOGI(TAG, "Successfully switched to station: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
-        }
-    }
-    else {
-        ESP_LOGE(TAG, "Pipeline or event handle is NULL after create_audio_pipeline. Cannot start.");
-        if (audio_pipeline_components.pipeline) {
-            destroy_audio_pipeline(&audio_pipeline_components);
-        }
-    }
-}
-
-static void init_buttons(void) {
-    // button_event_args_t event_args = {.long_press.press_time = 0};
-    button_config_t btn_cfg = {
-        .long_press_time = 0, // Use component default
-        .short_press_time = 0, // Use component default
-    };
-
-    // Volume Down Button
-    // button_gpio_config_t vol_down_gpio_cfg = {
-    //     .gpio_num = GPIO_VOLUME_DOWN,
-    //     .active_level = GPIO_ACTIVE_LOW,
-    //     .enable_power_save = false,
-    //     .disable_pull = false };
-    // esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &vol_down_gpio_cfg, &volume_down_btn_handle);
-    // if (ret == ESP_OK) {
-    //     iot_button_register_cb(volume_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_down_button_cb, NULL);
-    // }
-    // else {
-    //     ESP_LOGE(TAG, "Failed to create volume down button: %s", esp_err_to_name(ret));
-    // }
-
-    // // Volume Up Button
-    // button_gpio_config_t vol_up_gpio_cfg = { .gpio_num = GPIO_VOLUME_UP, .active_level = GPIO_ACTIVE_LOW };
-    // ret = iot_button_new_gpio_device(&btn_cfg, &vol_up_gpio_cfg, &volume_up_btn_handle);
-    // if (ret == ESP_OK) {
-    //     iot_button_register_cb(volume_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, volume_up_button_cb, NULL);
-    // }
-    // else {
-    //     ESP_LOGE(TAG, "Failed to create volume up button: %s", esp_err_to_name(ret));
-    // }
-
-    // Station Up Button
-    button_gpio_config_t station_up_gpio_cfg = { .gpio_num = GPIO_STATION_UP, .active_level = GPIO_ACTIVE_LOW };
-    esp_err_t ret = iot_button_new_gpio_device(&btn_cfg, &station_up_gpio_cfg, &station_up_btn_handle);
-    if (ret == ESP_OK) {
-        iot_button_register_cb(station_up_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_up_button_cb, NULL);
-    }
-    else {
-        ESP_LOGE(TAG, "Failed to create station up button: %s", esp_err_to_name(ret));
-    }
-    button_gpio_config_t station_down_gpio_cfg = { .gpio_num = GPIO_STATION_DOWN, .active_level = GPIO_ACTIVE_LOW };
-    ret = iot_button_new_gpio_device(&btn_cfg, &station_down_gpio_cfg, &station_down_btn_handle);
-    if (ret == ESP_OK) {
-        iot_button_register_cb(station_down_btn_handle, BUTTON_SINGLE_CLICK, NULL, station_down_button_cb, NULL);
-    }
-    else {
-        ESP_LOGE(TAG, "Failed to create station down button: %s", esp_err_to_name(ret));
+        ESP_LOGE(TAG, "Failed to run new audio pipeline. Error: %d", ret);
+        destroy_audio_pipeline(&audio_pipeline_components);
     }
 }
 
@@ -376,11 +276,10 @@ static void data_throughput_task(void* pvParameters)
 void app_main(void)
 {
     display = lvgl_ssd1306_setup();
-    create_home_screen(display);
+    screens_init(display);
     update_station_name(radio_stations[current_station].call_sign);
     update_station_city(radio_stations[current_station].city);
     int initial_volume = INITIAL_VOLUME;
-    create_station_selection_screen(display);
 
     int temp_volume;
     esp_log_level_set("*", ESP_LOG_DEBUG);
@@ -588,10 +487,6 @@ void app_main(void)
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
 
 
-    // ESP_LOGI(TAG, "Initializing buttons");
-    // init_buttons();
-
-
     ESP_LOGI(TAG, "Starting initial stream: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
     err = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
@@ -687,11 +582,6 @@ void app_main(void)
 
     ESP_LOGI(TAG, "Stopping audio_pipeline");
     destroy_audio_pipeline(&audio_pipeline_components);
-
-    ESP_LOGI(TAG, "Deleting buttons");
-    // if (volume_up_btn_handle) iot_button_delete(volume_up_btn_handle);
-    // if (volume_down_btn_handle) iot_button_delete(volume_down_btn_handle);
-    if (station_up_btn_handle) iot_button_delete(station_up_btn_handle);
 
     if (periph_set) {
         esp_periph_set_stop_all(periph_set);

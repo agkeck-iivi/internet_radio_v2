@@ -8,17 +8,20 @@ extern "C" {
 #endif
 
     /**
-     * @brief Creates the home screen UI on the given display.
+     * @brief Initializes all UI screens.
      * @param disp Pointer to the LVGL display.
      */
-    void create_home_screen(lv_display_t* disp);
+    void screens_init(lv_display_t* disp);
 
     /**
-     * @brief Creates the station select on the given display.
-     * @param disp Pointer to the LVGL display.
+     * @brief Switches the active view to the home screen.
      */
-    void create_station_selection_screen(lv_display_t* disp);
+    void switch_to_home_screen(void);
 
+    /**
+     * @brief Switches the active view to the station selection screen.
+     */
+    void switch_to_station_selection_screen(void);
     /**
      * @brief Updates the station name label on the screen.
      * @param name The new station name to display.

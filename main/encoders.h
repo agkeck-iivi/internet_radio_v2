@@ -9,12 +9,12 @@
 extern "C" {
 #endif
 
-    /**
-     * @brief Initializes the rotary encoders using the PCNT peripheral.
-     * @param board_handle Handle to the audio board for volume control.
-     * @param initial_volume The initial volume value (0-100) to set for the counter.
-     */
     void init_encoders(audio_board_handle_t board_handle, int initial_volume);
+
+    /**
+     * @brief Synchronizes the station encoder's internal index with the global current_station.
+     */
+    void sync_station_encoder_index(void);
 
 #ifdef __cplusplus
 }
