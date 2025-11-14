@@ -46,6 +46,7 @@
 #include "lvgl_ssd1306_setup.h"
 #include "screens.h"
 
+#include "station_data.h"
 #include "encoders.h"
 
 
@@ -66,7 +67,7 @@ static const char* TAG = "INTERNET_RADIO";
 // #define VOLUME_STEP    10ed
 
 // oled screen with lvgl
-
+extern int station_count; // from station_data.c
 static lv_display_t* display;
 
 // Static global variables for easier access in callbacks
@@ -92,40 +93,6 @@ const int WIFI_CONNECTED_BIT = BIT0;
 #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
 #define CUSTOM_CMD_PRINT_MESSAGE 1
 
-
-
-
-/**
- * @brief Structure to define a radio station's properties.
- */
-typedef struct
-{
-    const char* call_sign; // Station's call sign or name
-    const char* city;      // Station's city
-    const char* uri;       // Stream URI
-    codec_type_t codec;    // Codec type for the stream
-} station_t;
-
-station_t radio_stations[] = {
-    {"KEXP", "Seattle", "https://kexp.streamguys1.com/kexp160.aac", CODEC_TYPE_AAC},
-    {"KBUT", "Crested Butte", "http://playerservices.streamtheworld.com/api/livestream-redirect/KBUTFM.mp3", CODEC_TYPE_MP3},
-    {"KSUT", "4 Corners", "https://ksut.streamguys1.com/kute", CODEC_TYPE_AAC},
-    {"KDUR", "Durango", "https://kdurradio.fortlewis.edu/stream", CODEC_TYPE_MP3},
-    {"KOTO", "Telluride", "http://26193.live.streamtheworld.com/KOTOFM.mp3", CODEC_TYPE_MP3},
-    {"KHEN", "Salida", "https://stream.pacificaservice.org:9000/khen_128", CODEC_TYPE_MP3},
-    // {"KRCL", "Salt Lake City", "https://stream.xmission.com/krcl-high", CODEC_TYPE_AAC}, // 5 seconds only
-    // {"KRCL", "Salt Lake City", "https://kcpw.xmission.com/kuaa", CODEC_TYPE_MP3},  // 5 seconds at a time
-    {"KWSB", "Gunnison", "https://kwsb.streamguys1.com/live", CODEC_TYPE_MP3},
-    {"KFFP", "Portland","http://listen.freeformportland.org:8000/stream", CODEC_TYPE_MP3},
-    {"KBOO", "Portland","https://live.kboo.fm:8443/high", CODEC_TYPE_MP3},
-    // {"KRRC", "Reed College", "https://stream.radiojar.com/3wg5hpdkfkeuv", CODEC_TYPE_MP3}
-
-    // {"inet", "Radio Paradise", "http://stream.radioparadise.com/flac", CODEC_TYPE_FLAC},  // works (poorly) after xxx seconds
-    // {"test", "netherlands", "http://stream.haarlem105.nl:8000/haarlem105DAB.flac", CODEC_TYPE_FLAC},
-    // Add more stations here
-};
-
-int station_count = sizeof(radio_stations) / sizeof(radio_stations[0]);
 
 static void save_current_station_to_nvs(int station_index)
 {
@@ -413,7 +380,7 @@ void app_main(void)
     update_station_name(radio_stations[current_station].call_sign);
     update_station_city(radio_stations[current_station].city);
     int initial_volume = INITIAL_VOLUME;
-
+    create_station_selection_screen(display);
 
     int temp_volume;
     esp_log_level_set("*", ESP_LOG_DEBUG);

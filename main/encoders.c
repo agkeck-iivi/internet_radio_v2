@@ -198,11 +198,11 @@ void update_cyclic_value(void* pvParameters)
     cyclic_pulse_counter_t* counter = (cyclic_pulse_counter_t*)pvParameters;
     int last_step_count = 0;
     ESP_ERROR_CHECK(pcnt_unit_get_count(counter->pcnt_unit, &last_step_count));
-    last_step_count /= 4; // Each detent is 4 counts
+    last_step_count /= 1; // Each detent is 2 counts
 
     for (;;)
     {
-        const int fast_poll_ms = 250;           // 4 times per second
+        const int fast_poll_ms = 20;           // 4 times per second
         const int slow_poll_ms = 1000;          // 1 time per second
         const int inactivity_timeout_ms = 1000; // dwell time (ms) before triggering action
         static int current_poll_ms = slow_poll_ms;
@@ -225,6 +225,8 @@ void update_cyclic_value(void* pvParameters)
             counter->current_index = new_index;
             // counter->current_value = counter->values[counter->current_index];
             ESP_LOGI(TAG, "Cyclic index: %d", counter->current_index);
+            update_station_roller(counter->current_index);
+            // save_current_station_to_nvs(counter->current_index);
             last_step_count = current_step_count;
 
             // A change occurred, switch to fast polling and record the time

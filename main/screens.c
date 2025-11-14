@@ -7,32 +7,37 @@
 #include "lvgl.h"
 #include "screens.h"
 #include "esp_log.h"
+#include "station_data.h"
 
 extern float g_bitrate_kbps;
+extern int current_station;
+
 static lv_obj_t* bitrate_label = NULL;
 static lv_obj_t* callsign_label = NULL;
 static lv_obj_t* city_label = NULL;
 static lv_obj_t* volume_slider = NULL;
+static lv_obj_t* station_roller = NULL;
+
 
 
 void update_bitrate_label(float bitrate)
 {
     if (bitrate_label)
     {
-        lv_label_set_text_fmt(bitrate_label, "%d KBPS", (int)bitrate);
+        // lv_label_set_text_fmt(bitrate_label, "%d KBPS", (int)bitrate);
     }
 }
 void update_station_name(const char* name)
 {
     if (callsign_label) {
-        lv_label_set_text(callsign_label, name);
+        // lv_label_set_text(callsign_label, name);
     }
 }
 
 void update_station_city(const char* city)
 {
     if (city_label) {
-        lv_label_set_text(city_label, city);
+        // lv_label_set_text(city_label, city);
     }
 }
 
@@ -40,7 +45,16 @@ void update_volume_slider(int volume)
 {
     if (volume_slider)
     {
-        lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
+        // disable update while debugging station select
+        // lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
+    }
+}
+
+void update_station_roller(int new_station_index)
+{
+    if (station_roller)
+    {
+        lv_roller_set_selected(station_roller, new_station_index, LV_ANIM_ON);
     }
 }
 
@@ -114,4 +128,66 @@ void create_home_screen(lv_display_t* disp)
     bitrate_label = lv_label_create(text_container);
     lv_label_set_text_fmt(bitrate_label, "%3.0f KBPS", g_bitrate_kbps);
     lv_obj_set_style_text_font(bitrate_label, &lv_font_montserrat_14, 0); // Use default font for smaller text
+}
+
+void create_station_selection_screen(lv_display_t* disp)
+{
+    lv_obj_t* scr = lv_display_get_screen_active(disp);
+    lv_obj_clean(scr); // Clear existing widgets on the screen
+
+    // Create a horizontal line in the middle of the screen
+    // lv_coord_t screen_width = lv_display_get_horizontal_resolution(disp);
+    // lv_coord_t screen_height = lv_display_get_vertical_resolution(disp);
+    // lv_coord_t line_width_pct = 90;
+    // lv_coord_t line_width = (screen_width * line_width_pct) / 100;
+    // lv_coord_t line_y = screen_height / 2;
+    // lv_coord_t line_x_start = (screen_width - line_width) / 2;
+    // lv_coord_t line_x_end = line_x_start + line_width;
+
+    // lv_point_t line_points[] = { {0, 0}, {0, 0} };
+    // line_points[0].x = line_x_start;
+    // line_points[0].y = line_y;
+    // line_points[1].x = line_x_end;
+    // line_points[1].y = line_y;
+
+    // static lv_style_t style_line; // Style can remain static
+    // lv_style_init(&style_line);
+    // lv_style_set_line_width(&style_line, 1);
+    // lv_style_set_line_color(&style_line, lv_color_white());
+
+    // lv_obj_t* line = lv_line_create(scr);
+    // lv_line_set_points(line, line_points, 2);
+    // lv_obj_add_style(line, &style_line, 0);
+
+    // Build the options string for the roller
+    char roller_options[1024] = { 0 }; // Make sure this is large enough
+    for (int i = 0; i < station_count; i++) {
+        strcat(roller_options, radio_stations[i].call_sign);
+        if (i < station_count - 1) {
+            strcat(roller_options, "\n");
+        }
+    }
+
+    /*Create a roller*/
+    station_roller = lv_roller_create(scr);
+    lv_roller_set_options(station_roller,
+        roller_options,
+        LV_ROLLER_MODE_INFINITE);
+
+    lv_roller_set_visible_row_count(station_roller, 3);
+    lv_obj_set_width(station_roller, lv_pct(80));
+    lv_obj_center(station_roller);
+
+    // Use a smaller font and remove the inverted selection style
+    lv_obj_set_style_text_font(station_roller, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_bg_opa(station_roller, LV_OPA_TRANSP, LV_PART_SELECTED);
+    lv_obj_set_style_text_color(station_roller, lv_palette_main(LV_PALETTE_BLUE), LV_PART_SELECTED);
+    lv_obj_set_style_text_line_space(station_roller, 4, 0); // Reduce space between items
+
+
+    // Set initial station
+    lv_roller_set_selected(station_roller, current_station, LV_ANIM_OFF);
+
+    // // Event handler for when the roller value changes
+    // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);
 }

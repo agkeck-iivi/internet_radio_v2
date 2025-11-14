@@ -14,6 +14,12 @@ extern "C" {
     void create_home_screen(lv_display_t* disp);
 
     /**
+     * @brief Creates the station select on the given display.
+     * @param disp Pointer to the LVGL display.
+     */
+    void create_station_selection_screen(lv_display_t* disp);
+
+    /**
      * @brief Updates the station name label on the screen.
      * @param name The new station name to display.
      */
@@ -36,6 +42,12 @@ extern "C" {
      * @param volume The new volume value (0-100).
      */
     void update_volume_slider(int volume);
+
+    /**
+     * @brief Updates the station roller to a new station index.
+     * @param new_station_index The index of the new station to select.
+     */
+    void update_station_roller(int new_station_index);
 
 #ifdef __cplusplus
 }
