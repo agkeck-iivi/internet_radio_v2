@@ -126,26 +126,21 @@ static void create_home_screen_widgets(lv_obj_t* parent)
 
 static void create_station_selection_screen_widgets(lv_obj_t* parent)
 {
-    // lv_coord_t line_width_pct = 90;
-    // lv_coord_t line_width = (screen_width * line_width_pct) / 100;
-    // lv_coord_t line_y = screen_height / 2;
-    // lv_coord_t line_x_start = (screen_width - line_width) / 2;
-    // lv_coord_t line_x_end = line_x_start + line_width;
-
-    // lv_point_t line_points[] = { {0, 0}, {0, 0} };
-    // line_points[0].x = line_x_start;
-    // line_points[0].y = line_y;
-    // line_points[1].x = line_x_end;
-    // line_points[1].y = line_y;
-
-    // static lv_style_t style_line; // Style can remain static
+    // build gnomon
+    // static lv_point_precise_t line_points[] = { {0, 32}, {64, 32}};
+    // /*Create style*/
+    // static lv_style_t style_line;
     // lv_style_init(&style_line);
-    // lv_style_set_line_width(&style_line, 1);
-    // lv_style_set_line_color(&style_line, lv_color_white());
+    // lv_style_set_line_width(&style_line, 8);
+    // lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_BLUE));
+    // lv_style_set_line_rounded(&style_line, true);
 
-    // lv_obj_t* line = lv_line_create(scr);
-    // lv_line_set_points(line, line_points, 2);
-    // lv_obj_add_style(line, &style_line, 0);
+    // /*Create a line and apply the new style*/
+    // lv_obj_t * line1;
+    // line1 = lv_line_create(parent);
+    // lv_line_set_points(line1, line_points, 5);     /*Set the points*/
+    // lv_obj_add_style(line1, &style_line, 0);
+    // lv_obj_center(line1);
 
     // Build the options string for the roller
     char roller_options[1024] = { 0 }; // Make sure this is large enough
@@ -170,11 +165,32 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
     lv_obj_set_style_text_font(station_roller, &lv_font_montserrat_14, 0);
     lv_obj_set_style_bg_opa(station_roller, LV_OPA_TRANSP, LV_PART_SELECTED);
     lv_obj_set_style_text_color(station_roller, lv_palette_main(LV_PALETTE_BLUE), LV_PART_SELECTED);
-    lv_obj_set_style_text_line_space(station_roller, 4, 0); // Reduce space between items
+    lv_obj_set_style_text_line_space(station_roller, 2, 0); // Reduce space between items
 
 
     // Set initial station
-    lv_roller_set_selected(station_roller, current_station, LV_ANIM_OFF);
+    lv_roller_set_selected(station_roller, current_station, LV_ANIM_ON);
+
+    // build gnomon
+    static lv_point_precise_t line_points[] = { {0, 32}, {32, 32}};
+    /*Create style*/
+    static lv_style_t style_line;
+    lv_style_init(&style_line);
+    lv_style_set_line_width(&style_line, 6);
+    lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_BLUE));
+    lv_style_set_line_rounded(&style_line, true);
+
+    /*Create a line and apply the new style*/
+    lv_obj_t * line1;
+    lv_obj_t * line2;
+    line1 = lv_line_create(parent);
+    line2 = lv_line_create(parent);
+    lv_line_set_points(line1, line_points, 2);     /*Set the points*/
+    lv_line_set_points(line2, line_points, 2);     /*Set the points*/
+    lv_obj_add_style(line1, &style_line, 0);
+    lv_obj_add_style(line2, &style_line, 0);
+    lv_obj_align(line1, LV_ALIGN_LEFT_MID, 0,-15);
+    lv_obj_align(line2, LV_ALIGN_RIGHT_MID, 0,-15);
 
     // // Event handler for when the roller value changes
     // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);

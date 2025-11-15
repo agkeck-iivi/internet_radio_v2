@@ -30,13 +30,13 @@ static const char* TAG = "encoders";
 extern int station_count;
 extern int current_station;
 
-#define VOLUME_GPIO_A 2
-#define VOLUME_GPIO_B 42
+#define VOLUME_GPIO_A 42
+#define VOLUME_GPIO_B 2
 #define VOLUME_PRESS_GPIO 1
 
-#define STATION_GPIO_A 2
-#define STATION_GPIO_B 42
-#define STATION_PRESS_GPIO 1
+#define STATION_GPIO_A 39
+#define STATION_GPIO_B 40
+#define STATION_PRESS_GPIO 41
 
 // polling periods
 #define VOLUME_POLLING_PERIOD_MS 100
@@ -195,7 +195,26 @@ static void volume_press_task(void* pvParameters)
     }
 }
 
-void update_cyclic_value(void* pvParameters)
+static void station_press_task(void* pvParameters)
+{
+    ESP_LOGI(TAG, "Station press button task started.");
+    while (1) {
+        if (gpio_get_level(STATION_PRESS_GPIO) == 0) { // Button is pressed (active low)
+            // Debounce delay
+            vTaskDelay(pdMS_TO_TICKS(50));
+            // Wait for button release
+            while (gpio_get_level(STATION_PRESS_GPIO) == 0) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+            }
+
+            ESP_LOGI(TAG, "Station button pressed, restarting device.");
+            esp_restart();
+        }
+        vTaskDelay(pdMS_TO_TICKS(STATION_PRESS_POLLING_PERIOD_MS));
+    }
+}
+
+void update_station_select_pulse_counter(void* pvParameters)
 {
     cyclic_pulse_counter_t* counter = (cyclic_pulse_counter_t*)pvParameters;
     int last_step_count = 0;
@@ -206,9 +225,9 @@ void update_cyclic_value(void* pvParameters)
 
     for (;;)
     {
-        const int fast_poll_ms = 50;
+        const int fast_poll_ms = 20;
         const int slow_poll_ms = 200;
-        const int inactivity_timeout_ms = 2000; // 2 seconds before action
+        const int inactivity_timeout_ms = 3000; // 2 seconds before action
         static int current_poll_ms = slow_poll_ms;
         static TickType_t last_change_time = 0;
 
@@ -246,8 +265,9 @@ void update_cyclic_value(void* pvParameters)
         {
             // Inactivity timeout reached, perform action and switch back to slow polling
             ESP_LOGI(TAG, "Inactivity timeout, changing station to index %d", counter->current_index);
-        
+
             change_station(counter->current_index);
+
             switch_to_home_screen();
 
             current_poll_ms = slow_poll_ms;
@@ -273,63 +293,63 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
         .max_glitch_ns = 1000,
     };
 
-    // //*****************  volume encoder **********************
-    // gpio_config_t volume_encoder_gpio_config = {
-    //     .pin_bit_mask = (1ULL << VOLUME_GPIO_A) | (1ULL << VOLUME_GPIO_B) | (1ULL << VOLUME_PRESS_GPIO),
-    //     .mode = GPIO_MODE_INPUT,
-    //     .pull_up_en = GPIO_PULLUP_ENABLE,
-    //     .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    //     .intr_type = GPIO_INTR_DISABLE,
-    // };
-    // ESP_ERROR_CHECK(gpio_config(&volume_encoder_gpio_config));
+    //*****************  volume encoder **********************
+    gpio_config_t volume_encoder_gpio_config = {
+        .pin_bit_mask = (1ULL << VOLUME_GPIO_A) | (1ULL << VOLUME_GPIO_B) | (1ULL << VOLUME_PRESS_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&volume_encoder_gpio_config));
 
 
-    // ESP_LOGI(TAG, "install volume pcnt unit");
-    // static pcnt_unit_config_t volume_unit_config = {
-    //     .high_limit = INT16_MAX, // these are defined in <limits.h>  16 bit counter has type int (32bit?), force int16 limits
-    //     .low_limit = INT16_MIN,
-    // };
-    // static pcnt_unit_handle_t volume_pcnt_unit = NULL;
-    // ESP_ERROR_CHECK(pcnt_new_unit(&volume_unit_config, &volume_pcnt_unit));
+    ESP_LOGI(TAG, "install volume pcnt unit");
+    static pcnt_unit_config_t volume_unit_config = {
+        .high_limit = INT16_MAX, // these are defined in <limits.h>  16 bit counter has type int (32bit?), force int16 limits
+        .low_limit = INT16_MIN,
+    };
+    static pcnt_unit_handle_t volume_pcnt_unit = NULL;
+    ESP_ERROR_CHECK(pcnt_new_unit(&volume_unit_config, &volume_pcnt_unit));
 
-    // // limited_pulse_counter_t volume_counter;
-    // ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(volume_pcnt_unit, &filter_config));
+    // limited_pulse_counter_t volume_counter;
+    ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(volume_pcnt_unit, &filter_config));
 
-    // ESP_LOGI(TAG, "install pcnt channels");
-    // static pcnt_chan_config_t chan_a_config = {
-    //     .edge_gpio_num = VOLUME_GPIO_A,
-    //     .level_gpio_num = VOLUME_GPIO_B,
-    // };
-    // static pcnt_channel_handle_t pcnt_chan_a = NULL;
-    // ESP_ERROR_CHECK(pcnt_new_channel(volume_pcnt_unit, &chan_a_config, &pcnt_chan_a));
-    // ESP_LOGI(TAG, "set edge and level actions for pcnt channels");
+    ESP_LOGI(TAG, "install pcnt channels");
+    static pcnt_chan_config_t chan_a_config = {
+        .edge_gpio_num = VOLUME_GPIO_A,
+        .level_gpio_num = VOLUME_GPIO_B,
+    };
+    static pcnt_channel_handle_t pcnt_chan_a = NULL;
+    ESP_ERROR_CHECK(pcnt_new_channel(volume_pcnt_unit, &chan_a_config, &pcnt_chan_a));
+    ESP_LOGI(TAG, "set edge and level actions for pcnt channels");
 
-    // ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_a, PCNT_CHANNEL_EDGE_ACTION_DECREASE, PCNT_CHANNEL_EDGE_ACTION_INCREASE));
-    // ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_a, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
+    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_a, PCNT_CHANNEL_EDGE_ACTION_DECREASE, PCNT_CHANNEL_EDGE_ACTION_INCREASE));
+    ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_a, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
 
 
-    // ESP_LOGI(TAG, "enable pcnt unit");
-    // ESP_ERROR_CHECK(pcnt_unit_enable(volume_pcnt_unit));
-    // ESP_LOGI(TAG, "clear pcnt unit");
-    // ESP_ERROR_CHECK(pcnt_unit_clear_count(volume_pcnt_unit));
-    // ESP_LOGI(TAG, "start pcnt unit");
-    // ESP_ERROR_CHECK(pcnt_unit_start(volume_pcnt_unit));
+    ESP_LOGI(TAG, "enable volume pcnt unit");
+    ESP_ERROR_CHECK(pcnt_unit_enable(volume_pcnt_unit));
+    ESP_LOGI(TAG, "clear volume pcnt unit");
+    ESP_ERROR_CHECK(pcnt_unit_clear_count(volume_pcnt_unit));
+    ESP_LOGI(TAG, "start volume pcnt unit");
+    ESP_ERROR_CHECK(pcnt_unit_start(volume_pcnt_unit));
 
-    // // Use heap allocation for the counter so it can be shared
-    // limited_pulse_counter_t* volume_counter = malloc(sizeof(limited_pulse_counter_t));
-    // if (!volume_counter) {
-    //     ESP_LOGE(TAG, "Failed to allocate memory for volume counter");
-    //     return;
-    // }
-    // volume_counter->pcnt_unit = volume_pcnt_unit;
-    // volume_counter->value = initial_volume;
-    // volume_counter->adjust = initial_volume;
-    // volume_counter->speed = 5; // number of units of volume per encoder step
-    // volume_counter->board_handle = board_handle;
-    // ESP_LOGI(TAG, "start volume update task");
-    // xTaskCreate(update_volume_pulse_counter, "update_volume_pulse_counter", 4 * 1024, volume_counter, 5, NULL);
+    // Use heap allocation for the counter so it can be shared
+    limited_pulse_counter_t* volume_counter = malloc(sizeof(limited_pulse_counter_t));
+    if (!volume_counter) {
+        ESP_LOGE(TAG, "Failed to allocate memory for volume counter");
+        return;
+    }
+    volume_counter->pcnt_unit = volume_pcnt_unit;
+    volume_counter->value = initial_volume;
+    volume_counter->adjust = initial_volume;
+    volume_counter->speed = 5; // number of units of volume per encoder step
+    volume_counter->board_handle = board_handle;
+    ESP_LOGI(TAG, "start volume update task");
+    xTaskCreate(update_volume_pulse_counter, "update_volume_pulse_counter", 4 * 1024, volume_counter, 5, NULL);
 
-    // xTaskCreate(volume_press_task, "volume_press_task", 2048, NULL, 5, NULL);
+    xTaskCreate(volume_press_task, "volume_press_task", 2048, NULL, 5, NULL);
 
 
 
@@ -355,22 +375,26 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
     ESP_ERROR_CHECK(pcnt_unit_set_glitch_filter(station_pcnt_unit, &filter_config));
 
     static pcnt_chan_config_t chan_b_config = {
-        .edge_gpio_num = STATION_GPIO_B,
-        .level_gpio_num = STATION_GPIO_A,
+        .edge_gpio_num = STATION_GPIO_A,
+        .level_gpio_num = STATION_GPIO_B,
+        .flags = {
+        .invert_edge_input = true,
+        .invert_level_input = true,
+        }
     };
     static pcnt_channel_handle_t pcnt_chan_b = NULL;
     ESP_ERROR_CHECK(pcnt_new_channel(station_pcnt_unit, &chan_b_config, &pcnt_chan_b));
 
 
-    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_b, PCNT_CHANNEL_EDGE_ACTION_INCREASE, PCNT_CHANNEL_EDGE_ACTION_DECREASE));
+    ESP_ERROR_CHECK(pcnt_channel_set_edge_action(pcnt_chan_b, PCNT_CHANNEL_EDGE_ACTION_DECREASE, PCNT_CHANNEL_EDGE_ACTION_INCREASE));
     ESP_ERROR_CHECK(pcnt_channel_set_level_action(pcnt_chan_b, PCNT_CHANNEL_LEVEL_ACTION_KEEP, PCNT_CHANNEL_LEVEL_ACTION_INVERSE));
 
     // enable cyclic counter
-    ESP_LOGI(TAG, "enable pcnt unit");
+    ESP_LOGI(TAG, "enable station pcnt unit");
     ESP_ERROR_CHECK(pcnt_unit_enable(station_pcnt_unit));
-    ESP_LOGI(TAG, "clear pcnt unit");
+    ESP_LOGI(TAG, "clear station pcnt unit");
     ESP_ERROR_CHECK(pcnt_unit_clear_count(station_pcnt_unit));
-    ESP_LOGI(TAG, "start pcnt unit");
+    ESP_LOGI(TAG, "start station pcnt unit");
     ESP_ERROR_CHECK(pcnt_unit_start(station_pcnt_unit));
 
     // Use malloc to keep it in scope for the task and for sync function
@@ -379,5 +403,7 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume)
     g_station_counter_ptr->num_values = station_count;
     g_station_counter_ptr->current_index = current_station;
 
-    xTaskCreate(update_cyclic_value, "update_cyclic_value", 4*1024, g_station_counter_ptr, 5, NULL);
+    xTaskCreate(update_station_select_pulse_counter, "update_station_select_pulse_counter", 4 * 1024, g_station_counter_ptr, 5, NULL);
+    xTaskCreate(station_press_task, "station_press_task", 2048, NULL, 5, NULL);
+
 }

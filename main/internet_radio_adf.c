@@ -150,6 +150,12 @@ void change_station(int new_station_index)
         return;
     }
 
+    // Only change if the new station is different from the current one
+    if (new_station_index == current_station) {
+        ESP_LOGI(TAG, "Station %d is already selected. No change needed.", new_station_index);
+        return;
+    }
+
     ESP_LOGI(TAG, "Destroying current pipeline...");
     destroy_audio_pipeline(&audio_pipeline_components);
 
@@ -159,7 +165,6 @@ void change_station(int new_station_index)
     save_current_station_to_nvs(current_station);
     update_station_name(radio_stations[current_station].call_sign);
     update_station_city(radio_stations[current_station].city);
-    ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station, radio_stations[current_station].call_sign, radio_stations[current_station].city);
 
     ret = create_audio_pipeline(&audio_pipeline_components,
         radio_stations[current_station].codec,
@@ -275,13 +280,9 @@ static void data_throughput_task(void* pvParameters)
 
 void app_main(void)
 {
-    display = lvgl_ssd1306_setup();
-    screens_init(display);
-    update_station_name(radio_stations[current_station].call_sign);
-    update_station_city(radio_stations[current_station].city);
-    int initial_volume = INITIAL_VOLUME;
 
     int temp_volume;
+    int initial_volume = INITIAL_VOLUME;
     esp_log_level_set("*", ESP_LOG_DEBUG);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
     // esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
@@ -347,6 +348,10 @@ void app_main(void)
 #else
     tcpip_adapter_init();
 #endif
+    display = lvgl_ssd1306_setup();
+    screens_init(display);
+    update_station_name(radio_stations[current_station].call_sign);
+    update_station_city(radio_stations[current_station].city);
 
     // start oled display test task,  remove after debugging
     // xTaskCreate(task_test_ssd1306, "u8g2_task", 4096, NULL, 5, NULL);
