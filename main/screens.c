@@ -126,21 +126,6 @@ static void create_home_screen_widgets(lv_obj_t* parent)
 
 static void create_station_selection_screen_widgets(lv_obj_t* parent)
 {
-    // build gnomon
-    // static lv_point_precise_t line_points[] = { {0, 32}, {64, 32}};
-    // /*Create style*/
-    // static lv_style_t style_line;
-    // lv_style_init(&style_line);
-    // lv_style_set_line_width(&style_line, 8);
-    // lv_style_set_line_color(&style_line, lv_palette_main(LV_PALETTE_BLUE));
-    // lv_style_set_line_rounded(&style_line, true);
-
-    // /*Create a line and apply the new style*/
-    // lv_obj_t * line1;
-    // line1 = lv_line_create(parent);
-    // lv_line_set_points(line1, line_points, 5);     /*Set the points*/
-    // lv_obj_add_style(line1, &style_line, 0);
-    // lv_obj_center(line1);
 
     // Build the options string for the roller
     char roller_options[1024] = { 0 }; // Make sure this is large enough
@@ -190,7 +175,7 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
     lv_obj_add_style(line1, &style_line, 0);
     lv_obj_add_style(line2, &style_line, 0);
     lv_obj_align(line1, LV_ALIGN_LEFT_MID, 0,-15);
-    lv_obj_align(line2, LV_ALIGN_RIGHT_MID, 0,-15);
+            lv_obj_align(line2, LV_ALIGN_RIGHT_MID, 0,-15);
 
     // // Event handler for when the roller value changes
     // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);

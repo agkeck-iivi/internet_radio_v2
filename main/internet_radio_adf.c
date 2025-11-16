@@ -116,30 +116,6 @@ static void save_current_station_to_nvs(int station_index)
 }
 
 
-// void lcd_update(void* param)
-// {
-//     const char* TAG = "LCD_Display";
-//     int last_displayed_station = -1;
-//     while (true) {
-//         // Only update the display if the station has changed
-//         if (ctx != NULL && current_station != last_displayed_station) {
-//             ESP_LOGI(TAG, "Updating LCD for station: %s", radio_stations[current_station].call_sign);
-
-//             lcd1602_clear(ctx);
-
-//             // Display call sign on the first line
-//             lcd1602_set_cursor(ctx, 0, 0);
-//             lcd1602_string(ctx, radio_stations[current_station].call_sign);
-
-//             // Display city on the second line
-//             lcd1602_set_cursor(ctx, 1, 0);
-//             lcd1602_string(ctx, radio_stations[current_station].city);
-
-//             last_displayed_station = current_station;
-//         }
-//         vTaskDelay(pdMS_TO_TICKS(500)); // Check for station changes every 500ms
-//     }
-// }
 
 void change_station(int new_station_index)
 {
