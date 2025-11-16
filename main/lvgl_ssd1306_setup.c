@@ -13,6 +13,7 @@
 
 
 #include "esp_lcd_panel_vendor.h"
+#include "screens.h"
 
 
 static const char* TAG = "init_lvgl_ssd1306";
@@ -110,6 +111,7 @@ static void lvgl_port_task(void* arg)
     while (1)
     {
         _lock_acquire(&lvgl_api_lock);
+        process_ui_updates();
         time_till_next_ms = lv_timer_handler();
         _lock_release(&lvgl_api_lock);
         // in case of triggering a task watch dog time out

@@ -77,7 +77,7 @@ static audio_board_handle_t board_handle = NULL;  // make this global during deb
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
 
-volatile float g_bitrate_kbps = 0.0f;
+volatile int g_bitrate_kbps = 0;
 // Button Handles
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;
@@ -240,7 +240,7 @@ static void data_throughput_task(void* pvParameters)
         bytes_read_in_last_second = current_bytes_read - last_bytes_read;
         last_bytes_read = current_bytes_read;
 
-        g_bitrate_kbps = (float)(bytes_read_in_last_second * 8) / 1000.0f;
+        g_bitrate_kbps = (bytes_read_in_last_second * 8) / 1000;
         update_bitrate_label(g_bitrate_kbps);
 
         // ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
@@ -324,6 +324,9 @@ void app_main(void)
 #else
     tcpip_adapter_init();
 #endif
+    // Create the UI message queue before any UI tasks are started
+    g_ui_queue = xQueueCreate(10, sizeof(ui_update_message_t));
+
     display = lvgl_ssd1306_setup();
     screens_init(display);
     update_station_name(radio_stations[current_station].call_sign);

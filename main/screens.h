@@ -1,17 +1,43 @@
 #ifndef SCREENS_H
 #define SCREENS_H
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "lvgl.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+    typedef enum {
+        UPDATE_BITRATE,
+        UPDATE_STATION_NAME,
+        UPDATE_STATION_CITY,
+        UPDATE_VOLUME,
+        UPDATE_STATION_ROLLER,
+        SWITCH_TO_HOME,
+        SWITCH_TO_STATION_SELECTION
+    } ui_update_type_t;
+
+    typedef struct {
+        ui_update_type_t type;
+        union {
+            int value;
+            const char* str_value;
+        } data;
+    } ui_update_message_t;
+
+    extern QueueHandle_t g_ui_queue;
     /**
      * @brief Initializes all UI screens.
      * @param disp Pointer to the LVGL display.
      */
     void screens_init(lv_display_t* disp);
+
+    /**
+     * @brief Processes all pending UI update messages from the queue.
+     */
+    void process_ui_updates(void);
 
     /**
      * @brief Switches the active view to the home screen.
@@ -38,7 +64,7 @@ extern "C" {
      * @brief Updates the bitrate label on the screen.
      * @param bitrate The new bitrate value in kbps.
      */
-    void update_bitrate_label(float bitrate);
+    void update_bitrate_label(int bitrate);
 
     /**
      * @brief Updates the volume slider on the screen.

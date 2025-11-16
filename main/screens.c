@@ -4,13 +4,17 @@
  * SPDX-License-Identifier: CC0-1.0
  */
 
+#include "freertos/FreeRTOS.h"
 #include "lvgl.h"
 #include "screens.h"
 #include "esp_log.h"
 #include "station_data.h"
 
-extern float g_bitrate_kbps;
+extern int g_bitrate_kbps;
 extern int current_station;
+
+QueueHandle_t g_ui_queue;
+static const char* TAG = "SCREENS";
 
 static lv_obj_t* bitrate_label = NULL;
 static lv_obj_t* callsign_label = NULL;
@@ -23,40 +27,72 @@ static lv_obj_t* station_selection_screen_obj = NULL;
 
 
 
-void update_bitrate_label(float bitrate)
-{
-    if (bitrate_label)
-    {
-        lv_label_set_text_fmt(bitrate_label, "%d KBPS", (int)bitrate);
-    }
-}
-void update_station_name(const char* name)
-{
-    if (callsign_label) {
-        lv_label_set_text(callsign_label, name);
-    }
+void update_bitrate_label(int bitrate) {
+    ui_update_message_t msg = { .type = UPDATE_BITRATE, .data.value = bitrate };
+    xQueueSend(g_ui_queue, &msg, 0);
 }
 
-void update_station_city(const char* city)
-{
-    if (city_label) {
-        lv_label_set_text(city_label, city);
-    }
+void update_station_name(const char* name) {
+    ui_update_message_t msg = { .type = UPDATE_STATION_NAME, .data.str_value = name };
+    xQueueSend(g_ui_queue, &msg, 0);
 }
 
-void update_volume_slider(int volume)
-{
-    if (volume_slider)
-    {
-        lv_slider_set_value(volume_slider, volume, LV_ANIM_ON);
-    }
+void update_station_city(const char* city) {
+    ui_update_message_t msg = { .type = UPDATE_STATION_CITY, .data.str_value = city };
+    xQueueSend(g_ui_queue, &msg, 0);
 }
 
-void update_station_roller(int new_station_index)
-{
-    if (station_roller)
-    {
-        lv_roller_set_selected(station_roller, new_station_index, LV_ANIM_ON);
+void update_volume_slider(int volume) {
+    ui_update_message_t msg = { .type = UPDATE_VOLUME, .data.value = volume };
+    xQueueSend(g_ui_queue, &msg, 0);
+}
+
+void update_station_roller(int new_station_index) {
+    ui_update_message_t msg = { .type = UPDATE_STATION_ROLLER, .data.value = new_station_index };
+    xQueueSend(g_ui_queue, &msg, 0);
+}
+
+void process_ui_updates(void) {
+    // Defensive check to ensure the queue has been created.
+    if (g_ui_queue == NULL) {
+        return;
+    }
+
+    ui_update_message_t msg;
+    while (xQueueReceive(g_ui_queue, &msg, 0) == pdTRUE) {
+        switch (msg.type) {
+        case UPDATE_BITRATE:
+            if (bitrate_label)
+                lv_label_set_text_fmt(bitrate_label, "%d KBPS", msg.data.value);
+            break;
+        case UPDATE_STATION_NAME:
+            if (callsign_label)
+                lv_label_set_text(callsign_label, msg.data.str_value);
+            break;
+        case UPDATE_STATION_CITY:
+            if (city_label)
+                lv_label_set_text(city_label, msg.data.str_value);
+            break;
+        case UPDATE_VOLUME:
+            if (volume_slider)
+                lv_slider_set_value(volume_slider, msg.data.value, LV_ANIM_ON);
+            break;
+        case UPDATE_STATION_ROLLER:
+            if (station_roller)
+                lv_roller_set_selected(station_roller, msg.data.value, LV_ANIM_ON);
+            break;
+        case SWITCH_TO_HOME:
+            if (home_screen_obj)
+                lv_screen_load(home_screen_obj);
+            break;
+        case SWITCH_TO_STATION_SELECTION:
+            if (station_selection_screen_obj)
+                lv_screen_load(station_selection_screen_obj);
+            break;
+        default:
+            ESP_LOGW(TAG, "Unknown UI update type: %d", msg.type);
+            break;
+        }
     }
 }
 
@@ -120,7 +156,7 @@ static void create_home_screen_widgets(lv_obj_t* parent)
     lv_obj_set_style_text_font(city_label, &lv_font_montserrat_12, 0); // Use default font for smaller text
     // bitrate label
     bitrate_label = lv_label_create(text_container);
-    lv_label_set_text_fmt(bitrate_label, "%3.0f KBPS", g_bitrate_kbps);
+    lv_label_set_text_fmt(bitrate_label, "%d KBPS", g_bitrate_kbps);
     lv_obj_set_style_text_font(bitrate_label, &lv_font_montserrat_14, 0); // Use default font for smaller text
 }
 
@@ -157,7 +193,7 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
     lv_roller_set_selected(station_roller, current_station, LV_ANIM_ON);
 
     // build gnomon
-    static lv_point_precise_t line_points[] = { {0, 32}, {32, 32}};
+    static lv_point_precise_t line_points[] = { {0, 32}, {32, 32} };
     /*Create style*/
     static lv_style_t style_line;
     lv_style_init(&style_line);
@@ -166,16 +202,16 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
     lv_style_set_line_rounded(&style_line, true);
 
     /*Create a line and apply the new style*/
-    lv_obj_t * line1;
-    lv_obj_t * line2;
+    lv_obj_t* line1;
+    lv_obj_t* line2;
     line1 = lv_line_create(parent);
     line2 = lv_line_create(parent);
     lv_line_set_points(line1, line_points, 2);     /*Set the points*/
     lv_line_set_points(line2, line_points, 2);     /*Set the points*/
     lv_obj_add_style(line1, &style_line, 0);
     lv_obj_add_style(line2, &style_line, 0);
-    lv_obj_align(line1, LV_ALIGN_LEFT_MID, 0,-15);
-            lv_obj_align(line2, LV_ALIGN_RIGHT_MID, 0,-15);
+    lv_obj_align(line1, LV_ALIGN_LEFT_MID, 0, -15);
+    lv_obj_align(line2, LV_ALIGN_RIGHT_MID, 0, -15);
 
     // // Event handler for when the roller value changes
     // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);
@@ -183,6 +219,7 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
 
 void screens_init(lv_display_t* disp)
 {
+    g_ui_queue = xQueueCreate(10, sizeof(ui_update_message_t));
     home_screen_obj = lv_obj_create(NULL);
     station_selection_screen_obj = lv_obj_create(NULL);
 
@@ -195,10 +232,12 @@ void screens_init(lv_display_t* disp)
 
 void switch_to_home_screen(void)
 {
-    lv_screen_load(home_screen_obj);
+    ui_update_message_t msg = { .type = SWITCH_TO_HOME };
+    xQueueSend(g_ui_queue, &msg, 0);
 }
 
 void switch_to_station_selection_screen(void)
 {
-    lv_screen_load(station_selection_screen_obj);
+    ui_update_message_t msg = { .type = SWITCH_TO_STATION_SELECTION };
+    xQueueSend(g_ui_queue, &msg, 0);
 }
