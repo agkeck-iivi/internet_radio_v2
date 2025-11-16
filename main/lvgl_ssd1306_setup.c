@@ -38,7 +38,7 @@ static const char* TAG = "init_lvgl_ssd1306";
 #define LVGL_TASK_STACK_SIZE (8 * 1024)
 #define LVGL_TASK_PRIORITY 2
 #define LVGL_PALETTE_SIZE 8
-#define LVGL_TASK_MAX_DELAY_MS 500
+#define LVGL_TASK_MAX_DELAY_MS 100
 #define LVGL_TASK_MIN_DELAY_MS 1000 / CONFIG_FREERTOS_HZ
 
 // To use LV_COLOR_FORMAT_I1, we need an extra buffer to hold the converted data
