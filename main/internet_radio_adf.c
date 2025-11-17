@@ -66,7 +66,7 @@ static const char* TAG = "INTERNET_RADIO";
 #define INITIAL_VOLUME 0
 // #define VOLUME_STEP    10ed
 
-#define BITRATE_UPDATE_INTERVAL_MS 2000
+#define BITRATE_UPDATE_INTERVAL_MS 1000
 
 // oled screen with lvgl
 extern int station_count; // from station_data.c
@@ -231,35 +231,42 @@ static void get_device_service_name(char* service_name, size_t max)
  */
 static void data_throughput_task(void* pvParameters)
 {
+#define BITRATE_HISTORY_SIZE 10
+    static int bitrate_history[BITRATE_HISTORY_SIZE] = { 0 };
+    static int history_index = 0;
+
     uint64_t last_bytes_read = 0;
     uint64_t current_bytes_read;
-    uint64_t bytes_read_in_last_second;
-    int set_volume = 42;
-    int temp_volume;
+    uint64_t bytes_read_in_interval;
+
     while (1) {
-        current_bytes_read = g_bytes_read;
         vTaskDelay(pdMS_TO_TICKS(BITRATE_UPDATE_INTERVAL_MS));
-        bytes_read_in_last_second = current_bytes_read - last_bytes_read;
+
+        current_bytes_read = g_bytes_read;
+        bytes_read_in_interval = current_bytes_read - last_bytes_read;
         last_bytes_read = current_bytes_read;
 
-        g_bitrate_kbps = (bytes_read_in_last_second * 8) / BITRATE_UPDATE_INTERVAL_MS;
+        // Calculate current bitrate and add to history
+        int current_bitrate = (bytes_read_in_interval * 8) / BITRATE_UPDATE_INTERVAL_MS;
+        bitrate_history[history_index] = current_bitrate;
+        history_index = (history_index + 1) % BITRATE_HISTORY_SIZE;
+
+        // Calculate weighted moving average
+        long weighted_sum = 0;
+        int total_weight = 0;
+        for (int i = 0; i < BITRATE_HISTORY_SIZE; i++) {
+            int weight = i + 1; // Simple linear weight (1 for oldest, 10 for newest)
+            int data_index = (history_index + i) % BITRATE_HISTORY_SIZE;
+            weighted_sum += bitrate_history[data_index] * weight;
+            total_weight += weight;
+        }
+
+        g_bitrate_kbps = weighted_sum / total_weight;
         update_bitrate_label(g_bitrate_kbps);
-
-        // ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
-        // UBaseType_t highWaterMark = uxTaskGetStackHighWaterMark(NULL);
-        // ESP_LOGI(TAG, "MyTask High Water Mark: %d bytes", highWaterMark);
-        // audio_hal_set_volume(board_handle->audio_hal, set_volume++);
-        // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
-        // ESP_LOGI(TAG, "Current volume set to %d", temp_volume);
-
-
     }
 }
 
-void app_main(void)
-{
-
-    int temp_volume;
+void app_main(void) {
     int initial_volume = INITIAL_VOLUME;
     esp_log_level_set("*", ESP_LOG_DEBUG);
     // esp_log_level_set(TAG, ESP_LOG_DEBUG);
@@ -461,8 +468,8 @@ void app_main(void)
     board_handle->audio_hal->audio_codec_ctrl(AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
     audio_hal_set_volume(board_handle->audio_hal, initial_volume);
     update_volume_slider(initial_volume);
-    audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
-    ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
+    // audio_hal_get_volume(board_handle->audio_hal, &temp_volume);
+    // ESP_LOGI(TAG, "Initial volume set to %d", temp_volume);
 
 
     ESP_LOGI(TAG, "Set up  event listener");
