@@ -58,13 +58,15 @@ static const char* TAG = "INTERNET_RADIO";
 // lcd with boost-buck converter: https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/3584/MCCOG21605D6W-BNMLWI.pdf
 
 
-#define GPIO_STATION_DOWN     14
-#define GPIO_STATION_UP     12
-#define GPIO_ACTIVE_LOW     0
+// #define GPIO_STATION_DOWN     14
+// #define GPIO_STATION_UP     12
+// #define GPIO_ACTIVE_LOW     0
 
 // Volume control
 #define INITIAL_VOLUME 0
 // #define VOLUME_STEP    10ed
+
+#define BITRATE_UPDATE_INTERVAL_MS 2000
 
 // oled screen with lvgl
 extern int station_count; // from station_data.c
@@ -236,11 +238,11 @@ static void data_throughput_task(void* pvParameters)
     int temp_volume;
     while (1) {
         current_bytes_read = g_bytes_read;
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(BITRATE_UPDATE_INTERVAL_MS));
         bytes_read_in_last_second = current_bytes_read - last_bytes_read;
         last_bytes_read = current_bytes_read;
 
-        g_bitrate_kbps = (bytes_read_in_last_second * 8) / 1000;
+        g_bitrate_kbps = (bytes_read_in_last_second * 8) / BITRATE_UPDATE_INTERVAL_MS;
         update_bitrate_label(g_bitrate_kbps);
 
         // ESP_LOGI("THROUGHPUT_MONITOR", "Data throughput: %.2f kbps", g_bitrate_kbps);
