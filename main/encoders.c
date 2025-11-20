@@ -45,6 +45,8 @@ extern int current_station;
 #define STATION_POLLING_PERIOD_MS 100
 #define STATION_PRESS_POLLING_PERIOD_MS 100
 
+#define DELAY_BEFORE_STATION_CHANGE_MS 2000
+
 typedef struct
 {
     pcnt_unit_handle_t pcnt_unit;
@@ -227,7 +229,7 @@ void update_station_select_pulse_counter(void* pvParameters)
     {
         const int fast_poll_ms = 20;
         const int slow_poll_ms = 200;
-        const int inactivity_timeout_ms = 3000; // 2 seconds before action
+        const int inactivity_timeout_ms = DELAY_BEFORE_STATION_CHANGE_MS; // 2 seconds before action
         static int current_poll_ms = slow_poll_ms;
         static TickType_t last_change_time = 0;
 

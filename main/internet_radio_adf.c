@@ -86,10 +86,6 @@ const int WIFI_CONNECTED_BIT = BIT0;
 
 
 
-// Custom event definitions
-// #define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
-// #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
-// #define CUSTOM_CMD_PRINT_MESSAGE 1
 
 
 static void save_current_station_to_nvs(int station_index)
@@ -505,29 +501,6 @@ void app_main(void) {
     //  start encoder pulse counters
 
     init_encoders(board_handle, initial_volume);
-    // ESP_LOGI(TAG, "Initializing I2C LCD 16x2");
-    // static i2c_master_bus_handle_t i2c_bus;
-    // i2c_master_bus_config_t bus_cfg = {
-    //     .clk_source = I2C_CLK_SRC_DEFAULT,
-    //     .i2c_port = -1, // Use default I2C port
-    //     .sda_io_num = LCD_I2C_SDA,
-    //     .scl_io_num = LCD_I2C_SCL,
-    //     .glitch_ignore_cnt = 7,
-    //     .flags.enable_internal_pullup = true,
-    // };
-    // if (i2c_new_master_bus(&bus_cfg, &i2c_bus) != ESP_OK)
-    // {
-    //     ESP_LOGE(TAG, "Failed to initialize I2C bus");
-    // }
-    // else
-    //     config.bus = &i2c_bus;
-    // ctx = lcd1602_init(ESP_I2C_ADDRESS, true, &config);
-    // if (NULL != ctx)
-    // {
-    //     lcd1602_set_display(ctx, true, false, false);
-    // }
-
-    // xTaskCreatePinnedToCore(&lcd_update, "LCD Update Task", 4 * 1024, NULL, 1, NULL, 0);
 
     while (1)
     {
@@ -540,23 +513,6 @@ void app_main(void) {
         }
         ESP_LOGI(TAG, "Received event from element: %X, command: %d", (int)msg.source, msg.cmd);
 
-        // Handle the custom message
-                // if (msg.source_type == CUSTOM_EVENT_TYPE_USER && msg.cmd == CUSTOM_CMD_PRINT_MESSAGE && msg.source == CUSTOM_EVENT_SOURCE_ID) {
-                //     ESP_LOGI(TAG, "[ * ] Received Custom Message: %s", (char*)msg.data);
-                //     continue;
-                // }
-
-                // if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.codec_decoder && msg.cmd == AEL_MSG_CMD_REPORT_MUSIC_INFO)
-                // {
-                //     audio_element_info_t music_info = { 0 };
-                //     audio_element_getinfo(audio_pipeline_components.codec_decoder, &music_info); // Make sure codec_decoder is valid
-
-                //     ESP_LOGI(TAG, "[ * ] Receive music info from codec decoder, sample_rate=%d, bits=%d, ch=%d",
-                //         music_info.sample_rates, music_info.bits, music_info.channels);
-
-                //     i2s_stream_set_clk(audio_pipeline_components.i2s_stream_writer, music_info.sample_rates, music_info.bits, music_info.channels);
-                //     continue;
-                // }
 
         /* restart stream when the first pipeline element (http_stream_reader in this case) receives stop event (caused by reading errors) */
         if (audio_pipeline_components.http_stream_reader && msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void*)audio_pipeline_components.http_stream_reader && msg.cmd == AEL_MSG_CMD_REPORT_STATUS && (int)msg.data == AEL_STATUS_ERROR_OPEN)
