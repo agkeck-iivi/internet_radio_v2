@@ -87,9 +87,9 @@ const int WIFI_CONNECTED_BIT = BIT0;
 
 
 // Custom event definitions
-#define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
-#define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
-#define CUSTOM_CMD_PRINT_MESSAGE 1
+// #define CUSTOM_EVENT_SOURCE_ID ((void*)0x12345678) // Arbitrary ID for the source
+// #define CUSTOM_EVENT_TYPE_USER (AUDIO_ELEMENT_TYPE_PERIPH + 1) // Unique type
+// #define CUSTOM_CMD_PRINT_MESSAGE 1
 
 
 static void save_current_station_to_nvs(int station_index)
