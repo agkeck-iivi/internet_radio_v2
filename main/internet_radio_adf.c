@@ -48,6 +48,7 @@
 
 #include "station_data.h"
 #include "encoders.h"
+#include "ir_rmt.h"
 
 
 static const char* TAG = "INTERNET_RADIO";
@@ -55,16 +56,13 @@ static const char* TAG = "INTERNET_RADIO";
 
 
 
-// lcd with boost-buck converter: https://mm.digikey.com/Volume0/opasdata/d220001/medias/docus/3584/MCCOG21605D6W-BNMLWI.pdf
 
 
-// #define GPIO_STATION_DOWN     14
-// #define GPIO_STATION_UP     12
-// #define GPIO_ACTIVE_LOW     0
 
 // Volume control
 #define INITIAL_VOLUME 0
-// #define VOLUME_STEP    10ed
+
+#define IR_TX_GPIO_NUM 48
 
 #define BITRATE_UPDATE_INTERVAL_MS 1000
 
@@ -72,9 +70,10 @@ static const char* TAG = "INTERNET_RADIO";
 extern int station_count; // from station_data.c
 static lv_display_t* display;
 
-// Static global variables for easier access in callbacks
+// global variables for easier access in callbacks
 audio_pipeline_components_t audio_pipeline_components = { 0 };
 int current_station = 0;
+
 static audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
@@ -475,6 +474,13 @@ void app_main(void) {
     ESP_LOGI(TAG, "Listening event from peripherals");
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
 
+    
+    ESP_LOGI(TAG, "Initializing IR RMT");
+    rmt_channel_handle_t ir_tx_channel = init_ir_rmt(IR_TX_GPIO_NUM);
+    ESP_LOGI(TAG, "Sending Bose AUX signal");
+    send_bose_ir_command(ir_tx_channel, BOSE_CMD_AUX);
+    // The channel handle could be stored if you need to send more commands later
+
 
     ESP_LOGI(TAG, "Starting initial stream: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
     err = create_audio_pipeline(&audio_pipeline_components,
@@ -527,23 +533,24 @@ void app_main(void) {
             audio_pipeline_run(audio_pipeline_components.pipeline);
             continue;
         }
-    }
 
-    ESP_LOGI(TAG, "Stopping audio_pipeline");
-    destroy_audio_pipeline(&audio_pipeline_components);
+        ESP_LOGI(TAG, "Stopping audio_pipeline");
+        destroy_audio_pipeline(&audio_pipeline_components);
 
-    if (periph_set) {
-        esp_periph_set_stop_all(periph_set);
-        if (evt) {
-            audio_event_iface_remove_listener(esp_periph_set_get_event_iface(periph_set), evt);
+        if (periph_set) {
+            esp_periph_set_stop_all(periph_set);
+            if (evt) {
+                audio_event_iface_remove_listener(esp_periph_set_get_event_iface(periph_set), evt);
+            }
         }
+
+        if (evt) {
+            audio_event_iface_destroy(evt);
+        }
+        if (periph_set) {
+            esp_periph_set_destroy(periph_set);
+        }
+        // audio_board_deinit(board_handle); // If applicable and not handled by esp_periph_set_destroy
     }
 
-    if (evt) {
-        audio_event_iface_destroy(evt);
-    }
-    if (periph_set) {
-        esp_periph_set_destroy(periph_set);
-    }
-    // audio_board_deinit(board_handle); // If applicable and not handled by esp_periph_set_destroy
 }
