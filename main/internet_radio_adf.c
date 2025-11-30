@@ -63,6 +63,9 @@ static const char* TAG = "INTERNET_RADIO";
 #define INITIAL_VOLUME 0
 
 #define IR_TX_GPIO_NUM 48
+#define BOSE_ON_BUTTON_GPIO 47
+#define BOSE_OFF_BUTTON_GPIO 21
+#define BUTTON_POLLING_PERIOD_MS 100
 
 #define BITRATE_UPDATE_INTERVAL_MS 1000
 
@@ -77,6 +80,7 @@ int current_station = 0;
 static audio_board_handle_t board_handle = NULL;  // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
+static rmt_channel_handle_t g_ir_tx_channel = NULL;
 
 volatile int g_bitrate_kbps = 0;
 // Button Handles
@@ -260,6 +264,51 @@ static void data_throughput_task(void* pvParameters)
         update_bitrate_label(g_bitrate_kbps);
     }
 }
+
+static void bose_on_button_task(void* pvParameters)
+{
+    ESP_LOGI(TAG, "Bose ON button task started.");
+    while (1) {
+        if (gpio_get_level(BOSE_ON_BUTTON_GPIO) == 0) { // Button is pressed (active low)
+            vTaskDelay(pdMS_TO_TICKS(50)); // Debounce
+            if (gpio_get_level(BOSE_ON_BUTTON_GPIO) == 0) {
+                ESP_LOGI(TAG, "Bose ON button pressed, sending AUX signal.");
+                if (g_ir_tx_channel) {
+                    send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_AUX);
+                }
+                // Wait for button release
+                while (gpio_get_level(BOSE_ON_BUTTON_GPIO) == 0) {
+                    vTaskDelay(pdMS_TO_TICKS(10));
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(BUTTON_POLLING_PERIOD_MS));
+    }
+}
+
+static void bose_off_button_task(void* pvParameters)
+{
+    ESP_LOGI(TAG, "Bose OFF button task started.");
+    while (1) {
+        if (gpio_get_level(BOSE_OFF_BUTTON_GPIO) == 0) { // Button is pressed (active low)
+            vTaskDelay(pdMS_TO_TICKS(50)); // Debounce
+            if (gpio_get_level(BOSE_OFF_BUTTON_GPIO) == 0) {
+                ESP_LOGI(TAG, "Bose OFF button pressed, sending AUX then ON/OFF signal.");
+                if (g_ir_tx_channel) {
+                    send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_AUX);
+                    vTaskDelay(pdMS_TO_TICKS(150)); // delay between commands for bose to respond 150ms suffices, 100ms is too short
+                    send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_ON_OFF);
+                }
+                // Wait for button release
+                while (gpio_get_level(BOSE_OFF_BUTTON_GPIO) == 0) {
+                    vTaskDelay(pdMS_TO_TICKS(10));
+                }
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(BUTTON_POLLING_PERIOD_MS));
+    }
+}
+
 
 void app_main(void) {
     int initial_volume = INITIAL_VOLUME;
@@ -474,12 +523,24 @@ void app_main(void) {
     ESP_LOGI(TAG, "Listening event from peripherals");
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
 
-    
+
+    // Configure Bose control buttons
+    gpio_config_t bose_button_gpio_config = {
+        .pin_bit_mask = (1ULL << BOSE_ON_BUTTON_GPIO) | (1ULL << BOSE_OFF_BUTTON_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&bose_button_gpio_config));
+
+    xTaskCreate(bose_on_button_task, "bose_on_button_task", 2048, NULL, 5, NULL);
+    xTaskCreate(bose_off_button_task, "bose_off_button_task", 2048, NULL, 5, NULL);
+
     ESP_LOGI(TAG, "Initializing IR RMT");
-    rmt_channel_handle_t ir_tx_channel = init_ir_rmt(IR_TX_GPIO_NUM);
+    g_ir_tx_channel = init_ir_rmt(IR_TX_GPIO_NUM);
     ESP_LOGI(TAG, "Sending Bose AUX signal");
-    send_bose_ir_command(ir_tx_channel, BOSE_CMD_AUX);
-    // The channel handle could be stored if you need to send more commands later
+    send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_AUX);
 
 
     ESP_LOGI(TAG, "Starting initial stream: %s, %s", radio_stations[current_station].call_sign, radio_stations[current_station].city);
