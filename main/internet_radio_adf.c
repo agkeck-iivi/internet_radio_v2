@@ -62,7 +62,7 @@ static const char* TAG = "INTERNET_RADIO";
 // Volume control
 #define INITIAL_VOLUME 0
 
-#define IR_TX_GPIO_NUM 48
+#define IR_TX_GPIO_NUM 20
 #define BOSE_ON_BUTTON_GPIO 47
 #define BOSE_OFF_BUTTON_GPIO 21
 #define BUTTON_POLLING_PERIOD_MS 100
@@ -418,6 +418,17 @@ void app_main(void) {
         0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
     };
 
+    // Configure Bose control buttons
+    gpio_config_t bose_button_gpio_config = {
+        .pin_bit_mask = (1ULL << BOSE_ON_BUTTON_GPIO) | (1ULL << BOSE_OFF_BUTTON_GPIO),
+        .mode = GPIO_MODE_INPUT,
+        .pull_up_en = GPIO_PULLUP_ENABLE,
+        .pull_down_en = GPIO_PULLDOWN_DISABLE,
+        .intr_type = GPIO_INTR_DISABLE,
+    };
+    ESP_ERROR_CHECK(gpio_config(&bose_button_gpio_config));
+
+
     if (!provisioned) {
         ESP_LOGI(TAG, "Starting provisioning");
 
@@ -507,7 +518,7 @@ void app_main(void) {
 
 
     ESP_LOGI(TAG, "Start audio codec chip");
-    board_handle = audio_board_init(); // Assign to static global
+    board_handle = audio_board_init(); // Assign to global
     // explicit start the codec, I'm not sure why it was not started elsewhere.
     board_handle->audio_hal->audio_codec_ctrl(AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
     audio_hal_set_volume(board_handle->audio_hal, initial_volume);
@@ -524,15 +535,6 @@ void app_main(void) {
     audio_event_iface_set_listener(esp_periph_set_get_event_iface(periph_set), evt);
 
 
-    // Configure Bose control buttons
-    gpio_config_t bose_button_gpio_config = {
-        .pin_bit_mask = (1ULL << BOSE_ON_BUTTON_GPIO) | (1ULL << BOSE_OFF_BUTTON_GPIO),
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-        .pull_down_en = GPIO_PULLDOWN_DISABLE,
-        .intr_type = GPIO_INTR_DISABLE,
-    };
-    ESP_ERROR_CHECK(gpio_config(&bose_button_gpio_config));
 
     xTaskCreate(bose_on_button_task, "bose_on_button_task", 2048, NULL, 5, NULL);
     xTaskCreate(bose_off_button_task, "bose_off_button_task", 2048, NULL, 5, NULL);
