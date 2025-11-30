@@ -429,7 +429,12 @@ void app_main(void) {
     ESP_ERROR_CHECK(gpio_config(&bose_button_gpio_config));
 
 
-    if (!provisioned) {
+    if (!provisioned || gpio_get_level(BOSE_OFF_BUTTON_GPIO) == 0) {
+        if (provisioned) {
+            ESP_LOGI(TAG, "Bose OFF button pressed. Resetting provisioning.");
+            wifi_prov_mgr_reset_provisioning();
+        }
+
         ESP_LOGI(TAG, "Starting provisioning");
 
         char service_name[20];
