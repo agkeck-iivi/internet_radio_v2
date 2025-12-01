@@ -234,6 +234,7 @@ static void create_provisioning_screen_widgets(lv_obj_t* parent)
     lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
     // lv_obj_refresh_style(label, LV_TEXT_DECOR_UNDERLINE, 0);
     lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_line_space(label, 5, 0);
     lv_obj_center(label);
 }
 
