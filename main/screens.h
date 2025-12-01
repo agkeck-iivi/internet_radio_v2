@@ -16,7 +16,8 @@ extern "C" {
         UPDATE_VOLUME,
         UPDATE_STATION_ROLLER,
         SWITCH_TO_HOME,
-        SWITCH_TO_STATION_SELECTION
+        SWITCH_TO_STATION_SELECTION,
+        SWITCH_TO_PROVISIONING
     } ui_update_type_t;
 
     typedef struct {
@@ -48,6 +49,11 @@ extern "C" {
      * @brief Switches the active view to the station selection screen.
      */
     void switch_to_station_selection_screen(void);
+
+    /**
+     * @brief Switches the active view to the provisioning screen.
+     */
+    void switch_to_provisioning_screen(void);
     /**
      * @brief Updates the station name label on the screen.
      * @param name The new station name to display.

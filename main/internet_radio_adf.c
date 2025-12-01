@@ -166,6 +166,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_PROV_EVENT) {
         switch (event_id) {
         case WIFI_PROV_START:
+            switch_to_provisioning_screen();
             ESP_LOGI(TAG, "Provisioning started");
             break;
         case WIFI_PROV_CRED_RECV: {
@@ -185,6 +186,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             break;
         }
         case WIFI_PROV_CRED_SUCCESS:
+            switch_to_home_screen();
             ESP_LOGI(TAG, "Provisioning successful");
             break;
         case WIFI_PROV_END:

@@ -24,6 +24,7 @@ static lv_obj_t* station_roller = NULL;
 
 static lv_obj_t* home_screen_obj = NULL;
 static lv_obj_t* station_selection_screen_obj = NULL;
+static lv_obj_t* provisioning_screen_obj = NULL;
 
 
 
@@ -52,6 +53,11 @@ void update_station_roller(int new_station_index) {
     xQueueSend(g_ui_queue, &msg, 0);
 }
 
+void switch_to_provisioning_screen(void)
+{
+    ui_update_message_t msg = { .type = SWITCH_TO_PROVISIONING };
+    xQueueSend(g_ui_queue, &msg, 0);
+}
 void process_ui_updates(void) {
     // Defensive check to ensure the queue has been created.
     if (g_ui_queue == NULL) {
@@ -88,6 +94,10 @@ void process_ui_updates(void) {
         case SWITCH_TO_STATION_SELECTION:
             if (station_selection_screen_obj)
                 lv_screen_load(station_selection_screen_obj);
+            break;
+        case SWITCH_TO_PROVISIONING:
+            if (provisioning_screen_obj)
+                lv_screen_load(provisioning_screen_obj);
             break;
         default:
             ESP_LOGW(TAG, "Unknown UI update type: %d", msg.type);
@@ -217,14 +227,26 @@ static void create_station_selection_screen_widgets(lv_obj_t* parent)
     // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);
 }
 
+static void create_provisioning_screen_widgets(lv_obj_t* parent)
+{
+    lv_obj_t* label = lv_label_create(parent);
+    lv_label_set_text(label, "Setup WIFI with\nESP BLE Prov\napp");
+    lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
+    // lv_obj_refresh_style(label, LV_TEXT_DECOR_UNDERLINE, 0);
+    lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
+    lv_obj_center(label);
+}
+
 void screens_init(lv_display_t* disp)
 {
     g_ui_queue = xQueueCreate(10, sizeof(ui_update_message_t));
     home_screen_obj = lv_obj_create(NULL);
     station_selection_screen_obj = lv_obj_create(NULL);
+    provisioning_screen_obj = lv_obj_create(NULL);
 
     create_home_screen_widgets(home_screen_obj);
     create_station_selection_screen_widgets(station_selection_screen_obj);
+    create_provisioning_screen_widgets(provisioning_screen_obj);
 
     // Start on the home screen
     lv_screen_load(home_screen_obj);
