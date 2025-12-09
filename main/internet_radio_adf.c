@@ -591,25 +591,23 @@ void app_main(void) {
       audio_pipeline_run(audio_pipeline_components.pipeline);
       continue;
     }
+  }
 
-    ESP_LOGI(TAG, "Stopping audio_pipeline");
-    destroy_audio_pipeline(&audio_pipeline_components);
+  ESP_LOGI(TAG, "Stopping audio_pipeline");
+  destroy_audio_pipeline(&audio_pipeline_components);
 
-    if (periph_set) {
-      esp_periph_set_stop_all(periph_set);
-      if (evt) {
-        audio_event_iface_remove_listener(
-            esp_periph_set_get_event_iface(periph_set), evt);
-      }
-    }
-
+  if (periph_set) {
+    esp_periph_set_stop_all(periph_set);
     if (evt) {
-      audio_event_iface_destroy(evt);
+      audio_event_iface_remove_listener(
+          esp_periph_set_get_event_iface(periph_set), evt);
     }
-    if (periph_set) {
-      esp_periph_set_destroy(periph_set);
-    }
-    // audio_board_deinit(board_handle); // If applicable and not handled by
-    // esp_periph_set_destroy
+  }
+
+  if (evt) {
+    audio_event_iface_destroy(evt);
+  }
+  if (periph_set) {
+    esp_periph_set_destroy(periph_set);
   }
 }
