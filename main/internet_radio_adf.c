@@ -12,30 +12,26 @@
 #include "audio_common.h"
 #include "audio_event_iface.h"
 #include "audio_pipeline_manager.h"
+#include "board.h"
+#include "driver/gpio.h"
+#include "encoders.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_netif.h"
+#include "esp_peripherals.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
+#include "ir_rmt.h"
+#include "lvgl_ssd1306_setup.h"
 #include "nvs_flash.h"
+#include "screens.h"
 #include "sdkconfig.h"
-#include <string.h>
-
-#include "board.h"
-#include "driver/gpio.h"
-#include "esp_netif.h"
-#include "esp_peripherals.h"
-
+#include "station_data.h"
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h"
-
-#include "lvgl_ssd1306_setup.h"
-#include "screens.h"
-
-#include "encoders.h"
-#include "ir_rmt.h"
-#include "station_data.h"
+#include <string.h>
 
 static const char *TAG = "INTERNET_RADIO";
 
