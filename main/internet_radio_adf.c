@@ -44,6 +44,9 @@ static const char *TAG = "INTERNET_RADIO";
 #define BUTTON_POLLING_PERIOD_MS 100
 
 #define BITRATE_UPDATE_INTERVAL_MS 1000
+#define TYPICAL_STARTUP_DURATION_US                                            \
+  (15 * 1000 * 1000) // 15 seconds in microseconds, typical startup time beyond
+                     // which failure to connect suggests a need to reboot
 
 // oled screen with lvgl
 extern int station_count; // from station_data.c
@@ -204,6 +207,8 @@ static void get_device_service_name(char *service_name, size_t max) {
            eth_mac[4], eth_mac[5]);
 }
 
+#include "esp_timer.h" // Added for watchdog timer
+
 /**
  * @brief Task to measure and log the data throughput in kbps.
  */
@@ -241,6 +246,16 @@ static void data_throughput_task(void *pvParameters) {
 
     g_bitrate_kbps = weighted_sum / total_weight;
     update_bitrate_label(g_bitrate_kbps);
+
+    // Watchdog check
+    if (weighted_sum == 0) {
+      int64_t uptime_us = esp_timer_get_time();
+      if (uptime_us > TYPICAL_STARTUP_DURATION_US) {
+        ESP_LOGE(TAG, "Watchdog triggered: Throughput is 0 for 10 samples. "
+                      "Restarting...");
+        esp_restart();
+      }
+    }
   }
 }
 
