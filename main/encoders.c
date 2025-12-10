@@ -200,19 +200,30 @@ static void station_press_task(void *pvParameters) {
     if (gpio_get_level(STATION_PRESS_GPIO) ==
         0) { // Button is pressed (active low)
       int64_t press_start_time = esp_timer_get_time();
+      bool long_press_handled = false;
+
       // Debounce delay
       vTaskDelay(pdMS_TO_TICKS(50));
-      // Wait for button release
+
+      // Wait while button is pressed
       while (gpio_get_level(STATION_PRESS_GPIO) == 0) {
         vTaskDelay(pdMS_TO_TICKS(10));
-      }
-      int64_t press_duration = esp_timer_get_time() - press_start_time;
 
-      if (press_duration > 3000000) { // > 3 seconds
-        ESP_LOGI(TAG, "Long press detected (%" PRId64 " us). Restarting...",
-                 press_duration);
-        esp_restart();
-      } else {
+        // Check for long press during hold
+        int64_t current_duration = esp_timer_get_time() - press_start_time;
+        if (current_duration > 3000000) { // > 3 seconds
+          ESP_LOGI(TAG, "Long press detected (%" PRId64 " us). Restarting...",
+                   current_duration);
+          esp_restart();
+          long_press_handled = true;
+          break;
+        }
+      }
+
+      // Only process short press if long press wasn't handled (and device
+      // didn't restart)
+      if (!long_press_handled) {
+        int64_t press_duration = esp_timer_get_time() - press_start_time;
         ESP_LOGI(TAG, "Short press detected (%" PRId64 " us). Showing IP.",
                  press_duration);
         switch_to_ip_screen();
