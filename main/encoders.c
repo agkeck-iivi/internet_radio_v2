@@ -48,7 +48,14 @@ extern int current_station;
 #define STATION_POLLING_PERIOD_MS 100
 #define STATION_PRESS_POLLING_PERIOD_MS 100
 
+// this pause allows the user to change the station multiple times before the change takes effect
 #define DELAY_BEFORE_STATION_CHANGE_MS 2000
+// timing for long press on station switch to reboot
+#define LONG_PRESS_TIME_MS 1500
+// time to display IP address on screen
+#define IP_SCREEN_DISPLAY_TIME_MS 3000
+// reboot message is displayed for this time before rebooting
+#define REBOOT_MESSAGE_DISPLAY_TIME_MS 100
 
 typedef struct {
   pcnt_unit_handle_t pcnt_unit;
@@ -211,9 +218,13 @@ static void station_press_task(void *pvParameters) {
 
         // Check for long press during hold
         int64_t current_duration = esp_timer_get_time() - press_start_time;
-        if (current_duration > 3000000) { // > 3 seconds
-          ESP_LOGI(TAG, "Long press detected (%" PRId64 " us). Restarting...",
+        if (current_duration > LONG_PRESS_TIME_MS * 1000) {
+          ESP_LOGI(TAG,
+                   "Long press detected (%" PRId64
+                   " us). Rebooting sequence initiated...",
                    current_duration);
+          switch_to_reboot_screen();
+          vTaskDelay(pdMS_TO_TICKS(REBOOT_MESSAGE_DISPLAY_TIME_MS));
           esp_restart();
           long_press_handled = true;
           break;
@@ -241,7 +252,8 @@ static void station_press_task(void *pvParameters) {
         }
 
         // Wait 5 seconds
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        // Wait 5 seconds
+        vTaskDelay(pdMS_TO_TICKS(IP_SCREEN_DISPLAY_TIME_MS));
         switch_to_home_screen();
       }
     }

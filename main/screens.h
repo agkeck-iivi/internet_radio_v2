@@ -19,6 +19,7 @@ typedef enum {
   SWITCH_TO_STATION_SELECTION,
   SWITCH_TO_PROVISIONING,
   SWITCH_TO_IP_SCREEN,
+  SWITCH_TO_REBOOT_SCREEN,
   UPDATE_IP_LABEL
 } ui_update_type_t;
 
@@ -61,6 +62,11 @@ void switch_to_provisioning_screen(void);
  * @brief Switches the active view to the IP address screen.
  */
 void switch_to_ip_screen(void);
+
+/**
+ * @brief Switches the active view to the reboot screen.
+ */
+void switch_to_reboot_screen(void);
 
 /**
  * @brief Updates the station name label on the screen.

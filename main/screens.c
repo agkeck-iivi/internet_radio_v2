@@ -71,6 +71,12 @@ void update_ip_label(const char *ip) {
   ui_update_message_t msg = {.type = UPDATE_IP_LABEL, .data.str_value = ip};
   xQueueSend(g_ui_queue, &msg, 0);
 }
+
+void switch_to_reboot_screen(void) {
+  ui_update_message_t msg = {.type = SWITCH_TO_REBOOT_SCREEN};
+  xQueueSend(g_ui_queue, &msg, 0);
+}
+
 void process_ui_updates(void) {
   // Defensive check to ensure the queue has been created.
   if (g_ui_queue == NULL) {
@@ -111,6 +117,13 @@ void process_ui_updates(void) {
     case SWITCH_TO_PROVISIONING:
       if (message_screen_obj) {
         lv_label_set_text(message_label, "Setup WIFI with\nESP BLE Prov\napp");
+        lv_screen_load(message_screen_obj);
+      }
+      break;
+    // ... inside process_ui_updates default/switch ...
+    case SWITCH_TO_REBOOT_SCREEN:
+      if (message_screen_obj) {
+        lv_label_set_text(message_label, "Rebooting");
         lv_screen_load(message_screen_obj);
       }
       break;
