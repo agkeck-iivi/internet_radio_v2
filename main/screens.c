@@ -26,9 +26,8 @@ static lv_obj_t *station_roller = NULL;
 static lv_obj_t *home_screen_obj = NULL;
 static lv_obj_t *station_selection_screen_obj = NULL;
 
-static lv_obj_t *provisioning_screen_obj = NULL;
-static lv_obj_t *ip_screen_obj = NULL;
-static lv_obj_t *ip_label = NULL;
+static lv_obj_t *message_screen_obj = NULL;
+static lv_obj_t *message_label = NULL;
 
 void update_bitrate_label(int bitrate) {
   ui_update_message_t msg = {.type = UPDATE_BITRATE, .data.value = bitrate};
@@ -110,17 +109,23 @@ void process_ui_updates(void) {
         lv_screen_load(station_selection_screen_obj);
       break;
     case SWITCH_TO_PROVISIONING:
-
-      if (provisioning_screen_obj)
-        lv_screen_load(provisioning_screen_obj);
+      if (message_screen_obj) {
+        lv_label_set_text(message_label, "Setup WIFI with\nESP BLE Prov\napp");
+        lv_screen_load(message_screen_obj);
+      }
       break;
     case SWITCH_TO_IP_SCREEN:
-      if (ip_screen_obj)
-        lv_screen_load(ip_screen_obj);
+      if (message_screen_obj) {
+        // IP text is usually updated via UPDATE_IP_LABEL, but we can set a
+        // placeholder if needed or just keep the previous text if we want to be
+        // safe, but typically we want to clear or set placeholder
+        // lv_label_set_text(message_label, "IP Address:\n...");
+        lv_screen_load(message_screen_obj);
+      }
       break;
     case UPDATE_IP_LABEL:
-      if (ip_label)
-        lv_label_set_text(ip_label, msg.data.str_value);
+      if (message_label)
+        lv_label_set_text(message_label, msg.data.str_value);
       break;
     default:
       ESP_LOGW(TAG, "Unknown UI update type: %d", msg.type);
@@ -263,38 +268,25 @@ static void create_station_selection_screen_widgets(lv_obj_t *parent) {
   // lv_obj_add_event_cb(station_roller, event_handler, LV_EVENT_ALL, NULL);
 }
 
-static void create_provisioning_screen_widgets(lv_obj_t *parent) {
-  lv_obj_t *label = lv_label_create(parent);
-  lv_label_set_text(label, "Setup WIFI with\nESP BLE Prov\napp");
-  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, 0);
-  // lv_obj_refresh_style(label, LV_TEXT_DECOR_UNDERLINE, 0);
-  lv_obj_set_style_text_font(label, &lv_font_montserrat_14, 0);
-  lv_obj_set_style_text_line_space(label, 5, 0);
-  lv_obj_center(label);
-  lv_obj_center(label);
-}
-
-static void create_ip_screen_widgets(lv_obj_t *parent) {
-  ip_label = lv_label_create(parent);
-  lv_label_set_text(ip_label, "IP Address:\n...");
-  lv_obj_set_style_text_align(ip_label, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_font(ip_label, &lv_font_montserrat_14, 0);
-  lv_obj_set_style_text_line_space(ip_label, 5, 0);
-  lv_obj_center(ip_label);
+static void create_message_screen_widgets(lv_obj_t *parent) {
+  message_label = lv_label_create(parent);
+  lv_label_set_text(message_label, ""); // Initial empty text
+  lv_obj_set_style_text_align(message_label, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_style_text_font(message_label, &lv_font_montserrat_14, 0);
+  lv_obj_set_style_text_line_space(message_label, 5, 0);
+  lv_obj_center(message_label);
 }
 
 void screens_init(lv_display_t *disp) {
   g_ui_queue = xQueueCreate(10, sizeof(ui_update_message_t));
   home_screen_obj = lv_obj_create(NULL);
   station_selection_screen_obj = lv_obj_create(NULL);
-  provisioning_screen_obj = lv_obj_create(NULL);
+  message_screen_obj = lv_obj_create(NULL);
 
   create_home_screen_widgets(home_screen_obj);
   create_station_selection_screen_widgets(station_selection_screen_obj);
   create_station_selection_screen_widgets(station_selection_screen_obj);
-  create_provisioning_screen_widgets(provisioning_screen_obj);
-  ip_screen_obj = lv_obj_create(NULL);
-  create_ip_screen_widgets(ip_screen_obj);
+  create_message_screen_widgets(message_screen_obj);
 
   // Start on the home screen
   lv_screen_load(home_screen_obj);
