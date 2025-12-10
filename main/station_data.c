@@ -27,7 +27,8 @@ station_t radio_stations[] = {
      CODEC_TYPE_MP3},
     {"WFUV", "Fordham", "https://onair.wfuv.org/onair-hi", CODEC_TYPE_MP3},
     {"KUFM", "Missoula",
-     "https://playerservices.streamtheworld.com/api/livestream-redirect/KUFMFM.mp3",
+     "https://playerservices.streamtheworld.com/api/livestream-redirect/"
+     "KUFMFM.mp3",
      CODEC_TYPE_MP3},
     {"KRCL", "Salt Lake City", "http://stream.xmission.com:8000/krcl-low",
      CODEC_TYPE_AAC},
