@@ -14,8 +14,10 @@
 
 * 1 IR LED
 * 1 OLED? display spi interface
-
+### prototype
 ![internet radio version 2 prototype](v2_prototype.jpg)
+### schematic
+![internet radio version 2 schematic](./v2_schematic.png) 
 
 ## software
 
