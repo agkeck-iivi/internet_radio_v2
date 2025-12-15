@@ -16,6 +16,7 @@
 #include "driver/gpio.h"
 #include "encoders.h"
 #include "esp_event.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_peripherals.h"
@@ -246,6 +247,15 @@ static void data_throughput_task(void *pvParameters) {
 
     g_bitrate_kbps = weighted_sum / total_weight;
     update_bitrate_label(g_bitrate_kbps);
+
+    // monitoring ram usage.  remove this for production
+    size_t total_ram = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
+    size_t free_ram = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+    size_t used_ram = total_ram - free_ram;
+
+    // Log RAM usage
+    ESP_LOGI(TAG, "RAM: Used: %zu, Free: %zu, Total: %zu", used_ram, free_ram,
+             total_ram);
 
     // Watchdog check
     if (weighted_sum == 0) {
