@@ -2766,13 +2766,14 @@
 		)
 		(uuid "7fdcc0dc-68f1-436a-8c8e-7b4534803d41")
 	)
-	(text "BOSE IR remote input"
+	(text "BOSE IR remote input\nNote: this might not be necessary with\nboot sequence sending AUX and double\nclick on volume sending on/of"
 		(exclude_from_sim no)
-		(at 24.384 135.382 0)
+		(at 13.97 135.636 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
+			(justify left)
 		)
 		(uuid "e8e7d5ba-f8cc-43ed-ab4c-5a43124448c7")
 	)
