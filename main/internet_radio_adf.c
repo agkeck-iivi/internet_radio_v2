@@ -61,7 +61,7 @@ static audio_board_handle_t board_handle =
     NULL; // make this global during debugging
 static audio_event_iface_handle_t evt = NULL;
 static esp_periph_set_handle_t periph_set = NULL;
-static rmt_channel_handle_t g_ir_tx_channel = NULL;
+rmt_channel_handle_t g_ir_tx_channel = NULL;
 
 volatile int g_bitrate_kbps = 0;
 // Button Handles

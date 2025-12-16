@@ -22,6 +22,7 @@
 #include "esp_netif.h"
 #include "esp_timer.h"
 #include "internet_radio_adf.h"
+#include "ir_rmt.h"
 #include "screens.h"
 #include "station_data.h"
 #include <inttypes.h>
@@ -32,6 +33,7 @@ static const char *TAG = "encoders";
 
 extern int station_count;
 extern int current_station;
+extern rmt_channel_handle_t g_ir_tx_channel;
 
 #define VOLUME_GPIO_A 42
 #define VOLUME_GPIO_B 2
@@ -43,12 +45,13 @@ extern int current_station;
 
 // polling periods
 #define VOLUME_POLLING_PERIOD_MS 100
-#define VOLUME_PRESS_POLLING_PERIOD_MS 100
+#define VOLUME_PRESS_POLLING_PERIOD_MS 20
 
 #define STATION_POLLING_PERIOD_MS 100
 #define STATION_PRESS_POLLING_PERIOD_MS 100
 
-// this pause allows the user to change the station multiple times before the change takes effect
+// this pause allows the user to change the station multiple times before the
+// change takes effect
 #define DELAY_BEFORE_STATION_CHANGE_MS 2000
 // timing for long press on station switch to reboot
 #define LONG_PRESS_TIME_MS 1500
@@ -56,6 +59,8 @@ extern int current_station;
 #define IP_SCREEN_DISPLAY_TIME_MS 3000
 // reboot message is displayed for this time before rebooting
 #define REBOOT_MESSAGE_DISPLAY_TIME_MS 100
+// Time window to detect a second click for double-click actions
+#define DOUBLE_CLICK_TIMEOUT_MS 200
 
 typedef struct {
   pcnt_unit_handle_t pcnt_unit;
@@ -158,46 +163,75 @@ void update_volume_pulse_counter(void *pvParameters) {
 
 static void volume_press_task(void *pvParameters) {
   ESP_LOGI(TAG, "Volume press button task started.");
+
   while (1) {
     if (gpio_get_level(VOLUME_PRESS_GPIO) ==
         0) { // Button is pressed (active low)
       // Debounce delay
       vTaskDelay(pdMS_TO_TICKS(50));
-      // Wait for button release
+      // Wait for button release (first click release)
       while (gpio_get_level(VOLUME_PRESS_GPIO) == 0) {
         vTaskDelay(pdMS_TO_TICKS(10));
       }
 
-      is_muted = !is_muted; // Toggle mute state
-
-      if (is_muted) {
-        ESP_LOGI(TAG, "Muting volume");
-        // Save current volume and mute
-        if (g_volume_counter_ptr) {
-          volume_before_mute = g_volume_counter_ptr->value;
-        }
-        audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal, 0);
-        update_volume_slider(0);
-        // We don't save mute state to NVS, so it always starts unmuted
-      } else {
-        ESP_LOGI(TAG, "Unmuting volume to %d", volume_before_mute);
-        // Restore volume
-        if (g_volume_counter_ptr) {
-          // Sync counter state with the restored volume
-          g_volume_counter_ptr->value = volume_before_mute;
-          g_volume_counter_ptr->adjust = volume_before_mute;
-          pcnt_unit_clear_count(g_volume_counter_ptr->pcnt_unit);
-
-          audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal,
-                               volume_before_mute);
-          update_volume_slider(volume_before_mute);
-          save_volume_to_nvs(volume_before_mute);
+      // First click happened. Now wait and see if there is a second click.
+      bool double_click = false;
+      int waited_ms = 0;
+      while (waited_ms < DOUBLE_CLICK_TIMEOUT_MS) {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        waited_ms += 10;
+        if (gpio_get_level(VOLUME_PRESS_GPIO) == 0) {
+          double_click = true;
+          break;
         }
       }
-      // Debounce after release
+
+      if (double_click) {
+        ESP_LOGI(TAG, "Double click detected - Sending Bose ON/OFF signal");
+        // Debounce second click
+        vTaskDelay(pdMS_TO_TICKS(50));
+        // Wait for release of second click
+        while (gpio_get_level(VOLUME_PRESS_GPIO) == 0) {
+          vTaskDelay(pdMS_TO_TICKS(10));
+        }
+
+          if (g_ir_tx_channel) {
+          send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_ON_OFF);
+        }
+      } else {
+        // Timeout reached, no second click -> Single Click Action (Mute Toggle)
+        is_muted = !is_muted; // Toggle mute state
+
+        if (is_muted) {
+          ESP_LOGI(TAG, "Muting volume");
+          // Save current volume and mute
+          if (g_volume_counter_ptr) {
+            volume_before_mute = g_volume_counter_ptr->value;
+          }
+          audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal,
+                               0);
+          update_volume_slider(0);
+          // We don't save mute state to NVS, so it always starts unmuted
+        } else {
+          ESP_LOGI(TAG, "Unmuting volume to %d", volume_before_mute);
+          // Restore volume
+          if (g_volume_counter_ptr) {
+            // Sync counter state with the restored volume
+            g_volume_counter_ptr->value = volume_before_mute;
+            g_volume_counter_ptr->adjust = volume_before_mute;
+            pcnt_unit_clear_count(g_volume_counter_ptr->pcnt_unit);
+
+            audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal,
+                                 volume_before_mute);
+            update_volume_slider(volume_before_mute);
+            save_volume_to_nvs(volume_before_mute);
+          }
+        }
+      }
+      // Debounce after everything
       vTaskDelay(pdMS_TO_TICKS(50));
     }
-    vTaskDelay(pdMS_TO_TICKS(VOLUME_PRESS_POLLING_PERIOD_MS)); //
+    vTaskDelay(pdMS_TO_TICKS(VOLUME_PRESS_POLLING_PERIOD_MS));
   }
 }
 
