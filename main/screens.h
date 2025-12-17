@@ -12,7 +12,7 @@ extern "C" {
 typedef enum {
   UPDATE_BITRATE,
   UPDATE_STATION_NAME,
-  UPDATE_STATION_CITY,
+  UPDATE_STATION_ORIGIN,
   UPDATE_VOLUME,
   UPDATE_STATION_ROLLER,
   SWITCH_TO_HOME,
@@ -75,10 +75,10 @@ void switch_to_reboot_screen(void);
 void update_station_name(const char *name);
 
 /**
- * @brief Updates the station city label on the screen.
- * @param city The new city name to display.
+ * @brief Updates the station origin label on the screen.
+ * @param origin The new origin name to display.
  */
-void update_station_city(const char *city);
+void update_station_origin(const char *origin);
 
 /**
  * @brief Updates the bitrate label on the screen.

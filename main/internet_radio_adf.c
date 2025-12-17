@@ -115,11 +115,11 @@ void change_station(int new_station_index) {
   current_station = new_station_index;
   ESP_LOGI(TAG, "Switching to station %d: %s, %s", current_station,
            radio_stations[current_station].call_sign,
-           radio_stations[current_station].city);
+           radio_stations[current_station].origin);
   sync_station_encoder_index(); // Sync encoder's internal state
   save_current_station_to_nvs(current_station);
   update_station_name(radio_stations[current_station].call_sign);
-  update_station_city(radio_stations[current_station].city);
+  update_station_origin(radio_stations[current_station].origin);
 
   ret = create_audio_pipeline(&audio_pipeline_components,
                               radio_stations[current_station].codec,
@@ -129,7 +129,7 @@ void change_station(int new_station_index) {
         TAG,
         "Failed to create new audio pipeline for station %s, %s. Error: %d",
         radio_stations[current_station].call_sign,
-        radio_stations[current_station].city, ret);
+        radio_stations[current_station].origin, ret);
     return;
   }
 
@@ -433,7 +433,7 @@ void app_main(void) {
   display = lvgl_ssd1306_setup();
   screens_init(display);
   update_station_name(radio_stations[current_station].call_sign);
-  update_station_city(radio_stations[current_station].city);
+  update_station_origin(radio_stations[current_station].origin);
 
   // start oled display test task,  remove after debugging
   // xTaskCreate(task_test_ssd1306, "u8g2_task", 4096, NULL, 5, NULL);
@@ -608,7 +608,7 @@ void app_main(void) {
 
   ESP_LOGI(TAG, "Starting initial stream: %s, %s",
            radio_stations[current_station].call_sign,
-           radio_stations[current_station].city);
+           radio_stations[current_station].origin);
   err = create_audio_pipeline(&audio_pipeline_components,
                               radio_stations[current_station].codec,
                               radio_stations[current_station].uri);

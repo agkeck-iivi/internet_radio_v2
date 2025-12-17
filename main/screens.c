@@ -19,7 +19,7 @@ static const char *TAG = "SCREENS";
 
 static lv_obj_t *bitrate_label = NULL;
 static lv_obj_t *callsign_label = NULL;
-static lv_obj_t *city_label = NULL;
+static lv_obj_t *origin_label = NULL;
 static lv_obj_t *volume_slider = NULL;
 static lv_obj_t *station_roller = NULL;
 
@@ -40,9 +40,9 @@ void update_station_name(const char *name) {
   xQueueSend(g_ui_queue, &msg, 0);
 }
 
-void update_station_city(const char *city) {
-  ui_update_message_t msg = {.type = UPDATE_STATION_CITY,
-                             .data.str_value = city};
+void update_station_origin(const char *origin) {
+  ui_update_message_t msg = {.type = UPDATE_STATION_ORIGIN,
+                             .data.str_value = origin};
   xQueueSend(g_ui_queue, &msg, 0);
 }
 
@@ -94,9 +94,9 @@ void process_ui_updates(void) {
       if (callsign_label)
         lv_label_set_text(callsign_label, msg.data.str_value);
       break;
-    case UPDATE_STATION_CITY:
-      if (city_label)
-        lv_label_set_text(city_label, msg.data.str_value);
+    case UPDATE_STATION_ORIGIN:
+      if (origin_label)
+        lv_label_set_text(origin_label, msg.data.str_value);
       break;
     case UPDATE_VOLUME:
       if (volume_slider)
@@ -191,7 +191,7 @@ static void create_home_screen_widgets(lv_obj_t *parent) {
   // value changes lv_obj_add_event_cb(volume_slider, NULL,
   // LV_EVENT_VALUE_CHANGED, volume_label);
 
-  // 3. Container for Call Sign and City text
+  // 3. Container for Call Sign and Origin text
   // This container will take up the remaining width of the screen to the right
   // of the slider
   lv_obj_t *text_container = lv_obj_create(parent);
@@ -215,11 +215,11 @@ static void create_home_screen_widgets(lv_obj_t *parent) {
   lv_obj_set_style_text_font(callsign_label, &lv_font_montserrat_32, 0);
   lv_obj_set_style_text_letter_space(callsign_label, 1, 0);
 
-  // 5. City Label
-  city_label = lv_label_create(text_container);
-  lv_obj_set_style_text_font(city_label, &lv_font_montserrat_12,
+  // 5. Origin Label
+  origin_label = lv_label_create(text_container);
+  lv_obj_set_style_text_font(origin_label, &lv_font_montserrat_12,
                              0); // Use default font for smaller text
-  lv_obj_set_style_text_letter_space(city_label, 1, 0);
+  lv_obj_set_style_text_letter_space(origin_label, 1, 0);
   // bitrate label
   bitrate_label = lv_label_create(text_container);
   lv_label_set_text_fmt(bitrate_label, "%d KBPS", g_bitrate_kbps);
