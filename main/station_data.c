@@ -18,7 +18,7 @@ station_t radio_stations[] = {
     {"KFFP", "Portland", "http://listen.freeformportland.org:8000/stream",
      CODEC_TYPE_MP3},
     {"KBOO", "Portland", "https://live.kboo.fm:8443/high", CODEC_TYPE_MP3},
-    {"KXLU", "Loyola Marymount", "http://kxlu.streamguys1.com:80/kxlu-lo",
+    {"KXLU", "Loyola Marymnt", "http://kxlu.streamguys1.com:80/kxlu-lo",
      CODEC_TYPE_AAC},
     {"WPRB", "Princeton", "https://wprb.streamguys1.com/listen.mp3",
      CODEC_TYPE_AAC},
