@@ -213,16 +213,19 @@ static void create_home_screen_widgets(lv_obj_t *parent) {
   // Use Montserrat 24 for a larger call sign. Ensure LV_FONT_MONTSERRAT_24 is
   // enabled in lv_conf.h
   lv_obj_set_style_text_font(callsign_label, &lv_font_montserrat_32, 0);
+  lv_obj_set_style_text_letter_space(callsign_label, 1, 0);
 
   // 5. City Label
   city_label = lv_label_create(text_container);
   lv_obj_set_style_text_font(city_label, &lv_font_montserrat_12,
                              0); // Use default font for smaller text
+  lv_obj_set_style_text_letter_space(city_label, 1, 0);
   // bitrate label
   bitrate_label = lv_label_create(text_container);
   lv_label_set_text_fmt(bitrate_label, "%d KBPS", g_bitrate_kbps);
   lv_obj_set_style_text_font(bitrate_label, &lv_font_montserrat_14,
                              0); // Use default font for smaller text
+  lv_obj_set_style_text_letter_space(bitrate_label, 1, 0);
 }
 
 static void create_station_selection_screen_widgets(lv_obj_t *parent) {
@@ -252,6 +255,7 @@ static void create_station_selection_screen_widgets(lv_obj_t *parent) {
                               LV_PART_SELECTED);
   lv_obj_set_style_text_line_space(station_roller, 2,
                                    0); // Reduce space between items
+  lv_obj_set_style_text_letter_space(station_roller, 1, 0);
 
   // Set initial station
   lv_roller_set_selected(station_roller, current_station, LV_ANIM_ON);
@@ -287,6 +291,7 @@ static void create_message_screen_widgets(lv_obj_t *parent) {
   lv_obj_set_style_text_align(message_label, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_font(message_label, &lv_font_montserrat_14, 0);
   lv_obj_set_style_text_line_space(message_label, 5, 0);
+  lv_obj_set_style_text_letter_space(message_label, 1, 0);
   lv_obj_center(message_label);
 }
 
