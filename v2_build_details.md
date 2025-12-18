@@ -7,10 +7,7 @@
 * 2 rotary encoders with push buttons and hardware debounce
   * encoder 1: volume + mute
   * encoder 2: station selection + display ip address + reboot
-* 2 pushbuttons
-  * button 1: send bose aux signal on IR led
-  * button 2: send bose aux followed by on/off signals on IR led
-  * holding button 2 during boot enters provisioning mode
+
 
 * 1 IR LED
 * 1 OLED? display spi interface
@@ -28,11 +25,40 @@ Version 1 used the LyraT sdkconfig option to identify the audio board.  In versi
 ### encoders
 The hardware pulse counters track the position of the encoders. This device has interupts for pulse thresholds but not for changes in pulse counts.  We use a polling task to check the pulse counts and update the encoder position.  For the volume encoder we clamp the value to the range [0, 100] and arrange the relationship between the pulse count and the [0, 100] range to saturate at the endpoints.  In this way, even if the user turns well past an endpoint the reverse movement will immediately affect the value.
 ### lvgl
+LVGL is used for the display interface. Since LVGL is not thread-safe, we implement a **Queue-based Producer/Consumer pattern** to manage all UI updates safely.
+
+#### Thread Safety & Queue
+*   **Producer**: Any task (e.g., Wi-Fi events, Encoder Logic) that wants to update the UI creates a `ui_update_message_t` struct. This struct contains an event `type` (enum) and optional `data` (int or string pointer). This message is sent to `g_ui_queue`.
+*   **Consumer**: The `process_ui_updates()` function runs in the main loop (or a dedicated UI task). It consumes messages from `g_ui_queue` and performs the actual LVGL API calls (e.g., `lv_label_set_text`, `lv_screen_load`). This ensures all LVGL operations happen in a single context.
+
+#### Screens
+The application uses three primary screens:
+1.  **Home Screen**: The main dashboard showing the Volume Slider, Station Call Sign, Origin, and Bitrate.
+2.  **Station Selection**: Displays a "Roller" widget allowing the user to scroll through the list of stations.
+3.  **Message Screen**: A generic, reusable screen with a centered label used for notifications (e.g., "Rebooting", "Provisioning", "IP Address").
+
+#### Messaging
+To display a message on the **Message Screen**:
+1.  **Fixed Messages**: Helper functions like `switch_to_reboot_screen()` send a message type (e.g., `SWITCH_TO_REBOOT_SCREEN`) that triggers the consumer to load the Message Screen and set a hardcoded string (e.g., "Rebooting").
+2.  **Arbitrary Messages**: To display dynamic text (like an IP address), the system uses the `UPDATE_IP_LABEL` message type.
+    *   The producer sends a message with `type = UPDATE_IP_LABEL` and `data.str_value = "My String"`.
+    *   The consumer reads specific string pointer and updates the label on the Message Screen.
+    *   *Note: Ensure the string pointer remains valid until processed, or use static/global buffers.*
+
 ### wifi
+The device relies on Wi-Fi for internet connectivity. If no Wi-Fi credentials are provided (e.g., typically on the first boot), the device enters **Provisioning Mode**.
+
+**Provisioning Mode**:
+*   The device broadcasts a Bluetooth LE (BLE) service.
+*   Use the **Espressif BLE Provisioning** app (available on iOS and Android) to connect to the device.
+*   Follow the app instructions to scan for Wi-Fi networks and provide the SSID and password.
+*   Once credentials are received, the device will connect to the Wi-Fi network and save the credentials to NVS for future boots.
+*   **Forced Reprovisioning**: To reset the Wi-Fi credentials and force the device back into provisioning mode, **press and hold the Station Encoder button** while powering on (or rebooting) the device.
+
 ### ir
 The Bose Wave radio uses an IR remote control for all functions. Version 2 is designed for this particular unit so we generate our own IR signals to control the radio.  After sniffing the IR signals with ir_nec_transciever project we see that the radio does not use the NEC protocal.  Using 10 samples of the on/off button and 10 samples of the aux button we create a concensus signal for each message. The colab: `bose_sig_analysis.ipynb` shows the analysis of the IR signals.
 
-The bose IR protocal is stateful: the on/off button performs different functions based on the state of the radio.  The aux button is stateless, this signal will always result in the radio being on with input from the aux jack.  Therefore we use aux as the on signal and aux + on/off as the off signal.  We send aux during the boot sequence to ensure that the radio is on when we boot.  We expect the user to press the off button to turn the radio off.
+The bose IR protocal is stateful: the on/off button performs different functions based on the state of the radio.  The aux button is stateless, this signal will always result in the radio being on with input from the aux jack.  Therefore we use aux as the on signal and aux + on/off as the off signal.  We send aux during the boot sequence to ensure that the radio is on when we boot.  We expect the user to double click the volume encoder to turn the radio off.
 ### nvs
 ### station data
 Initial station data is stored in a constant array.  On first boot, if the spiffs is not initialized we create a default station json file based on the constant array.  Thereafter, on boot the spiffs should be found and the json file serves as the source of truth for station data.  We provide an API to load the station data from the json file and save the station data to the json file.
