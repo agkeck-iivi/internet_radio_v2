@@ -50,3 +50,30 @@ where the codec enum uses these values:
 We provide a web interface to update the station data at <ESP32_IP_ADDRESS>/api/stations (or just <ESP_IP_ADDRESS> where there is a link to station data.)  From the web interface we can add, remove, and update station data as well a reorder the list of stations.  The station data is saved to the spiffs and a reboot will apply the changes.
 
 ## construction
+
+## operation
+
+The radio manages its user interface primarily through two rotary encoders, each with an integrated push button.
+
+### Volume Encoder
+*   **Rotation**: Adjusts the volume between 0 and 100.
+    *   Changes are reflected immediately on the OLED volume slider.
+    *   The volume level is saved to NVS and persists across reboots.
+    *   Rotating the knob while muted will automatically unmute the device.
+*   **Button Press (Single Click)**: Toggles **Mute**.
+    *   Muting sets the volume to 0.
+    *   Unmuting restores the volume to the previous level.
+*   **Button Press (Double Click)**: Sends a **Bose ON/OFF** IR command (via the IR transmitter).
+
+### Station Encoder
+*   **Rotation**: detailed station selection.
+    *   Turning the knob switches the display to the "Station Selection" screen.
+    *   You can scroll through the available stations (wrapping around the list).
+    *   **Selection**: Stop turning the knob to select a station. After **2 seconds** of inactivity, the radio will:
+        1.  Switch to the selected station.
+        2.  Begin streaming.
+        3.  Return to the Home screen.
+*   **Button Press (Short)**: Displays the device's **IP Address** on the screen for 5 seconds, then returns to Home.
+*   **Button Press (Long > 1.5s)**: **Reboots** the device. A reboot message is displayed before the system restarts.
+*   **Hold During Boot**: Forces **Reprovisioning**.
+    *   If the button is held down while the device powers on, it will erase current Wi-Fi credentials and return to provisioning mode.

@@ -462,6 +462,13 @@ void app_main(void) {
 
   ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
 
+  // Check for forced provisioning (Station button held during boot)
+  init_encoder_switches();
+  if (is_station_switch_pressed()) {
+    ESP_LOGI(TAG, "Station button held at boot - Forcing Reprovisioning!");
+    wifi_prov_mgr_reset_provisioning();
+  }
+
   bool provisioned = false;
   ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
   // provisioned = false; // force provisioning for testing comment this line

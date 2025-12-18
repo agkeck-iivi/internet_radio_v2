@@ -195,7 +195,7 @@ static void volume_press_task(void *pvParameters) {
           vTaskDelay(pdMS_TO_TICKS(10));
         }
 
-          if (g_ir_tx_channel) {
+        if (g_ir_tx_channel) {
           send_bose_ir_command(g_ir_tx_channel, BOSE_CMD_ON_OFF);
         }
       } else {
@@ -365,6 +365,25 @@ void sync_station_encoder_index(void) {
   }
 }
 
+void init_encoder_switches(void) {
+  gpio_config_t switch_config = {
+      .pin_bit_mask =
+          (1ULL << VOLUME_PRESS_GPIO) | (1ULL << STATION_PRESS_GPIO),
+      .mode = GPIO_MODE_INPUT,
+      .pull_up_en = GPIO_PULLUP_ENABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type = GPIO_INTR_DISABLE,
+  };
+  ESP_ERROR_CHECK(gpio_config(&switch_config));
+
+  // Wait a bit for potential capacitance/debounce settle
+  vTaskDelay(pdMS_TO_TICKS(100));
+}
+
+bool is_station_switch_pressed(void) {
+  return gpio_get_level(STATION_PRESS_GPIO) == 0;
+}
+
 void init_encoders(audio_board_handle_t board_handle, int initial_volume) {
 
   // ESP_LOGI(TAG, "set glitch filter");
@@ -373,9 +392,9 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume) {
   };
 
   //*****************  volume encoder **********************
+  //*****************  volume encoder **********************
   gpio_config_t volume_encoder_gpio_config = {
-      .pin_bit_mask = (1ULL << VOLUME_GPIO_A) | (1ULL << VOLUME_GPIO_B) |
-                      (1ULL << VOLUME_PRESS_GPIO),
+      .pin_bit_mask = (1ULL << VOLUME_GPIO_A) | (1ULL << VOLUME_GPIO_B),
       .mode = GPIO_MODE_INPUT,
       .pull_up_en = GPIO_PULLUP_ENABLE,
       .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -441,16 +460,13 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume) {
 
   // *********************  station encoder  **********************
   static gpio_config_t station_encoder_gpio_config = {
-      .pin_bit_mask = (1ULL << STATION_GPIO_A) | (1ULL << STATION_GPIO_B) |
-                      (1ULL << STATION_PRESS_GPIO),
+      .pin_bit_mask = (1ULL << STATION_GPIO_A) | (1ULL << STATION_GPIO_B),
       .mode = GPIO_MODE_INPUT,
       .pull_up_en = GPIO_PULLUP_ENABLE,
       .pull_down_en = GPIO_PULLDOWN_DISABLE,
       .intr_type = GPIO_INTR_DISABLE,
   };
   ESP_ERROR_CHECK(gpio_config(&station_encoder_gpio_config));
-
-  ESP_LOGI(TAG, "install station pcnt unit");
   static pcnt_unit_config_t station_unit_config = {
       .high_limit =
           INT16_MAX, // these are defined in <limits.h>  16 bit counter has type
