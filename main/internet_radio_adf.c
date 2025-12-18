@@ -30,6 +30,7 @@
 #include "screens.h"
 #include "sdkconfig.h"
 #include "station_data.h"
+#include "web_server.h"
 #include "wifi_provisioning/manager.h"
 #include "wifi_provisioning/scheme_ble.h"
 #include <string.h>
@@ -373,6 +374,8 @@ void app_main(void) {
   }
   ESP_ERROR_CHECK(err);
 
+  init_station_data();
+
   nvs_handle_t nvs_handle;
   err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
   if (err != ESP_OK) {
@@ -504,6 +507,7 @@ void app_main(void) {
   xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_BIT, false, true,
                       portMAX_DELAY);
   ESP_LOGI(TAG, "Wi-Fi Connected.");
+  start_web_server();
 
   // wifi_event_group = xEventGroupCreate();
 
