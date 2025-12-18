@@ -12,3 +12,4 @@
 # loading a bunch of stations:
 ```{bash}
 curl -X POST -H "Content-Type: application/json" -d '[{"call_sign":"TestRadio","origin":"Home","uri":"http://test.com","codec":1}]' http://<ESP32_IP_ADDRESS>/api/stations
+'''
