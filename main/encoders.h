@@ -1,7 +1,7 @@
 #ifndef ENCODERS_H
 #define ENCODERS_H
 
-#include "audio_hal.h"
+// #include "audio_hal.h"
 #include "board.h"
 
 #ifdef __cplusplus

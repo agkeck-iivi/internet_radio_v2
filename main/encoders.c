@@ -9,13 +9,13 @@
 #include "driver/gpio.h"
 #include "driver/pulse_cnt.h"
 #include "esp_log.h"
-#include "freertos/FreeRTOS.h"
+// #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
 #include "audio_hal.h"
-#include "esp_sleep.h"
-#include "nvs_flash.h"
+// #include "esp_sleep.h"
+#include "nvs_flash.h" // this is needed even though linter suggests otherwise
 #include <limits.h>
 
 #include "board.h"

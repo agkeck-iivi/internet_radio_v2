@@ -1,8 +1,8 @@
 #ifndef IR_RMT_H
 #define IR_RMT_H
 
-#include "driver/rmt_tx.h"
-#include "driver/gpio.h"
+#include "driver/rmt_tx.h"  // needed despite linter suggesting otherwise
+#include "driver/gpio.h"    // needed despite linter suggesting otherwise
 #include "esp_err.h"
 
 #ifdef __cplusplus

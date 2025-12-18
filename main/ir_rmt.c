@@ -1,9 +1,9 @@
-#include "freertos/FreeRTOS.h"
+#include "freertos/FreeRTOS.h" // needed despite linter suggesting otherwise
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "esp_log.h"
 #include "driver/rmt_tx.h"
-#include "driver/rmt_rx.h"
+#include "driver/rmt_rx.h" // needed despite linter suggesting otherwise
 // #include "ir_nec_encoder.h"
 #include "driver/rmt_encoder.h"
 #include "ir_rmt.h"
