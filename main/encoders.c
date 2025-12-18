@@ -384,6 +384,10 @@ bool is_station_switch_pressed(void) {
   return gpio_get_level(STATION_PRESS_GPIO) == 0;
 }
 
+bool is_volume_switch_pressed(void) {
+  return gpio_get_level(VOLUME_PRESS_GPIO) == 0;
+}
+
 void init_encoders(audio_board_handle_t board_handle, int initial_volume) {
 
   // ESP_LOGI(TAG, "set glitch filter");

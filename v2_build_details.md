@@ -53,7 +53,7 @@ The device relies on Wi-Fi for internet connectivity. If no Wi-Fi credentials ar
 *   Use the **Espressif BLE Provisioning** app (available on iOS and Android) to connect to the device.
 *   Follow the app instructions to scan for Wi-Fi networks and provide the SSID and password.
 *   Once credentials are received, the device will connect to the Wi-Fi network and save the credentials to NVS for future boots.
-*   **Forced Reprovisioning**: To reset the Wi-Fi credentials and force the device back into provisioning mode, **press and hold the Station Encoder button** while powering on (or rebooting) the device.
+*   **Forced Reprovisioning**: To reset the Wi-Fi credentials and force the device back into provisioning mode, **press and hold the Volume Encoder button** while powering on (or rebooting) the device.
 
 ### ir
 The Bose Wave radio uses an IR remote control for all functions. Version 2 is designed for this particular unit so we generate our own IR signals to control the radio.  After sniffing the IR signals with ir_nec_transciever project we see that the radio does not use the NEC protocal.  Using 10 samples of the on/off button and 10 samples of the aux button we create a concensus signal for each message. The colab: `bose_sig_analysis.ipynb` shows the analysis of the IR signals.
@@ -102,4 +102,4 @@ The radio manages its user interface primarily through two rotary encoders, each
 *   **Button Press (Short)**: Displays the device's **IP Address** on the screen for 5 seconds, then returns to Home.
 *   **Button Press (Long > 1.5s)**: **Reboots** the device. A reboot message is displayed before the system restarts.
 *   **Hold During Boot**: Forces **Reprovisioning**.
-    *   If the button is held down while the device powers on, it will erase current Wi-Fi credentials and return to provisioning mode.
+    *   If the volume button is held down while the device powers on, it will erase current Wi-Fi credentials and return to provisioning mode.

@@ -23,6 +23,12 @@ void init_encoder_switches(void);
 bool is_station_switch_pressed(void);
 
 /**
+ * @brief Check if the volume encoder button is currently pressed.
+ * @return true if pressed (LOW), false otherwise.
+ */
+bool is_volume_switch_pressed(void);
+
+/**
  * @brief Synchronizes the station encoder's internal index with the global
  * current_station.
  */
