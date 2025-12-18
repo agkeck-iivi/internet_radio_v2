@@ -60,7 +60,7 @@ extern rmt_channel_handle_t g_ir_tx_channel;
 // reboot message is displayed for this time before rebooting
 #define REBOOT_MESSAGE_DISPLAY_TIME_MS 100
 // Time window to detect a second click for double-click actions
-#define DOUBLE_CLICK_TIMEOUT_MS 200
+#define DOUBLE_CLICK_TIMEOUT_MS 500
 
 typedef struct {
   pcnt_unit_handle_t pcnt_unit;
