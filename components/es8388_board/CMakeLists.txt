@@ -1,7 +1,7 @@
 # Edit following two lines to set component requirements (see docs)
 set(COMPONENT_REQUIRES)
 # set(COMPONENT_PRIV_REQUIRES audio_sal audio_hal esp_dispatcher esp_peripherals display_service)
-set(COMPONENT_PRIV_REQUIRES audio_sal audio_hal driver)
+set(COMPONENT_PRIV_REQUIRES audio_sal audio_hal driver esp_peripherals)
 
 if(CONFIG_AUDIO_BOARD_CUSTOM)
 message(STATUS "Current board name is " CONFIG_AUDIO_BOARD_CUSTOM)
@@ -9,6 +9,7 @@ list(APPEND COMPONENT_ADD_INCLUDEDIRS .)
 set(COMPONENT_SRCS
 ./board.c
 ./board_pins_config.c
+./es8388_driver.c
 )
 endif()
 

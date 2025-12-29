@@ -30,6 +30,7 @@
  /**
   * @brief SDCARD Function Definition
   */
+#include "audio_hal.h"
 #define FUNC_SDCARD_EN            (0)
 #define SDCARD_OPEN_FILE_NUM_MAX  5
   // #define SDCARD_INTR_GPIO          GPIO_NUM_34
@@ -82,7 +83,7 @@
    */
 #define AUDIO_ADC_INPUT_CH_FORMAT "N"
 
-extern audio_hal_func_t AUDIO_CODEC_ES8388_DEFAULT_HANDLE;
+extern audio_hal_func_t MY_AUDIO_CODEC_ES8388_DEFAULT_HANDLE;
 #define AUDIO_CODEC_DEFAULT_CONFIG(){                   \
         .adc_input  = AUDIO_HAL_ADC_INPUT_LINE1,        \
         .dac_output = AUDIO_HAL_DAC_OUTPUT_ALL,         \
