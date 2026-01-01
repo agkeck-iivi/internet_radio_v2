@@ -1,0 +1,98 @@
+[
+    {
+        "call_sign": "KEXP",
+        "origin": "Seattle",
+        "uri": "https://kexp.streamguys1.com/kexp160.aac",
+        "codec": 1
+    },
+    {
+        "call_sign": "KBUT",
+        "origin": "Crested Butte",
+        "uri": "http://playerservices.streamtheworld.com/api/livestream-redirect/KBUTFM.mp3",
+        "codec": 0
+    },
+    {
+        "call_sign": "KSUT",
+        "origin": "4 Corners",
+        "uri": "https://ksut.streamguys1.com/kute",
+        "codec": 1
+    },
+    {
+        "call_sign": "KDUR",
+        "origin": "Durango",
+        "uri": "https://kdurradio.fortlewis.edu/stream",
+        "codec": 0
+    },
+    {
+        "call_sign": "KOTO",
+        "origin": "Telluride",
+        "uri": "http://26193.live.streamtheworld.com/KOTOFM.mp3",
+        "codec": 0
+    },
+    {
+        "call_sign": "KHEN",
+        "origin": "Salida",
+        "uri": "https://stream.pacificaservice.org:9000/khen_128",
+        "codec": 0
+    },
+    {
+        "call_sign": "KWSB",
+        "origin": "Gunnison",
+        "uri": "https://kwsb.streamguys1.com/live",
+        "codec": 0
+    },
+    {
+        "call_sign": "KFFP",
+        "origin": "Portland",
+        "uri": "http://listen.freeformportland.org:8000/stream",
+        "codec": 0
+    },
+    {
+        "call_sign": "KBOO",
+        "origin": "Portland",
+        "uri": "https://live.kboo.fm:8443/high",
+        "codec": 0
+    },
+    {
+        "call_sign": "KXLU",
+        "origin": "Loyola Marymnt",
+        "uri": "http://kxlu.streamguys1.com:80/kxlu-lo",
+        "codec": 1
+    },
+    {
+        "call_sign": "WPRB",
+        "origin": "Princeton",
+        "uri": "https://wprb.streamguys1.com/listen.mp3",
+        "codec": 1
+    },
+    {
+        "call_sign": "WMBR",
+        "origin": "MIT",
+        "uri": "https://wmbr.org:8002/hi",
+        "codec": 0
+    },
+    {
+        "call_sign": "KALX",
+        "origin": "Berkeley",
+        "uri": "https://stream.kalx.berkeley.edu:8443/kalx-128.mp3",
+        "codec": 0
+    },
+    {
+        "call_sign": "WFUV",
+        "origin": "Fordham",
+        "uri": "https://onair.wfuv.org/onair-hi",
+        "codec": 0
+    },
+    {
+        "call_sign": "KUFM",
+        "origin": "Missoula",
+        "uri": "https://playerservices.streamtheworld.com/api/livestream-redirect/KUFMFM.mp3",
+        "codec": 0
+    },
+    {
+        "call_sign": "KRCL",
+        "origin": "Salt Lake City",
+        "uri": "http://stream.xmission.com:8000/krcl-low",
+        "codec": 1
+    }
+]
