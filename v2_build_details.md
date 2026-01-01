@@ -78,6 +78,9 @@ where the codec enum uses these values:
 We provide a web interface to update the station data at <ESP32_IP_ADDRESS>/api/stations (or just <ESP_IP_ADDRESS> where there is a link to station data.)  From the web interface we can add, remove, and update station data as well a reorder the list of stations.  The station data is saved to the spiffs and a reboot will apply the changes.
 
 ## construction
+Phase 1: Solder the esp32 and es8388 boards with low pass filters and pullup resistors for I2C bus to build the audio pipeline.  Connectors for the jumpers to controls, display, ir, audio, and power are shown but not yet finalized.
+![internet radio version 2 construction phase 1](v2_audio_pipeline.jpg)
+
 
 ## operation
 
