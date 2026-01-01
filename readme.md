@@ -1,5 +1,4 @@
-# Version 2 build details
-![internet radio version 1 build](v1_build.jpg)
+# Internet radio v2
 ## hardware
 * ESP32s3 DevkitC N16R8
 * ES8388 audio board
