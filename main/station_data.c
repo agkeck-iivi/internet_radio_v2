@@ -37,8 +37,8 @@ static const default_station_t default_stations[] = {
     {"KHEN", "Salida", "https://stream.pacificaservice.org:9000/khen_128",
      CODEC_TYPE_MP3},
     {"KWSB", "Gunnison", "https://kwsb.streamguys1.com/live", CODEC_TYPE_MP3},
-    // {"KFFP", "Portland", "http://listen.freeformportland.org:8000/stream",
-    //  CODEC_TYPE_MP3},
+    {"KFFP", "Portland", "http://listen.freeformportland.org:8000/stream",
+     CODEC_TYPE_MP3}, // this is a 256K stream  it works sporadically
     {"KBOO", "Portland", "https://live.kboo.fm:8443/high", CODEC_TYPE_MP3},
     {"KXLU", "Loyola Marymnt", "http://kxlu.streamguys1.com:80/kxlu-lo",
      CODEC_TYPE_AAC},
@@ -54,9 +54,9 @@ static const default_station_t default_stations[] = {
      CODEC_TYPE_MP3},
     {"KRCL", "Salt Lake City", "http://stream.xmission.com:8000/krcl-low",
      CODEC_TYPE_AAC},
-     // {"KRRC", "Reed College", "https://stream.radiojar.com/3wg5hpdkfkeuv",
-     // CODEC_TYPE_MP3}
- 
+    // {"KRRC", "Reed College", "https://stream.radiojar.com/3wg5hpdkfkeuv",
+    // CODEC_TYPE_MP3}
+
 };
 static const int default_station_count =
     sizeof(default_stations) / sizeof(default_stations[0]);
