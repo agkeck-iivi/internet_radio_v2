@@ -64,6 +64,8 @@ static esp_periph_set_handle_t periph_set = NULL;
 rmt_channel_handle_t g_ir_tx_channel = NULL;
 
 volatile int g_bitrate_kbps = 0;
+// system monitor logging enable
+static bool g_enable_sys_monitor = false;
 // Button Handles
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;
@@ -252,54 +254,58 @@ static void data_throughput_task(void *pvParameters) {
     g_bitrate_kbps = weighted_sum / total_weight;
     update_bitrate_label(g_bitrate_kbps);
 
-    // monitoring ram usage.  remove this for production
-    size_t total_ram = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
-    size_t free_ram = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
-    size_t used_ram = total_ram - free_ram;
+    if (g_enable_sys_monitor) {
+      // monitoring ram usage.  remove this for production
+      size_t total_ram = heap_caps_get_total_size(MALLOC_CAP_DEFAULT);
+      size_t free_ram = heap_caps_get_free_size(MALLOC_CAP_DEFAULT);
+      size_t used_ram = total_ram - free_ram;
 
-    // Log RAM usage
-    ESP_LOGI(TAG, "RAM: Used: %zu, Free: %zu, Total: %zu", used_ram, free_ram,
-             total_ram);
-
-    // Core Load Monitoring
-    TaskStatus_t status;
-    vTaskGetInfo(xTaskGetIdleTaskHandleForCPU(0), &status, pdFALSE, eInvalid);
-    uint64_t idle_0 = status.ulRunTimeCounter;
-
-    vTaskGetInfo(xTaskGetIdleTaskHandleForCPU(1), &status, pdFALSE, eInvalid);
-    uint64_t idle_1 = status.ulRunTimeCounter;
-
-    uint64_t current_total_time = esp_timer_get_time();
-
-    if (prev_total > 0) {
-      uint64_t total_diff = current_total_time - prev_total;
-      uint64_t idle_0_diff = idle_0 - prev_idle_0;
-      uint64_t idle_1_diff = idle_1 - prev_idle_1;
-
-      // Ensure we don't divide by zero or get negative load due to
-      // overflow/timing glitches
-      if (total_diff > 0) {
-        float load_0 = 100.0f * (1.0f - ((float)idle_0_diff / total_diff));
-        float load_1 = 100.0f * (1.0f - ((float)idle_1_diff / total_diff));
-
-        // Clamp to 0-100 range
-        if (load_0 < 0)
-          load_0 = 0;
-        else if (load_0 > 100)
-          load_0 = 100;
-        if (load_1 < 0)
-          load_1 = 0;
-        else if (load_1 > 100)
-          load_1 = 100;
-
-        ESP_LOGI(TAG, "Core Load: Core 0: %.2f%%, Core 1: %.2f%%", load_0,
-                 load_1);
-      }
+      // Log RAM usage
+      ESP_LOGI(TAG, "RAM: Used: %zu, Free: %zu, Total: %zu", used_ram, free_ram,
+               total_ram);
     }
 
-    prev_idle_0 = idle_0;
-    prev_idle_1 = idle_1;
-    prev_total = current_total_time;
+    if (g_enable_sys_monitor) {
+      // Core Load Monitoring
+      TaskStatus_t status;
+      vTaskGetInfo(xTaskGetIdleTaskHandleForCPU(0), &status, pdFALSE, eInvalid);
+      uint64_t idle_0 = status.ulRunTimeCounter;
+
+      vTaskGetInfo(xTaskGetIdleTaskHandleForCPU(1), &status, pdFALSE, eInvalid);
+      uint64_t idle_1 = status.ulRunTimeCounter;
+
+      uint64_t current_total_time = esp_timer_get_time();
+
+      if (prev_total > 0) {
+        uint64_t total_diff = current_total_time - prev_total;
+        uint64_t idle_0_diff = idle_0 - prev_idle_0;
+        uint64_t idle_1_diff = idle_1 - prev_idle_1;
+
+        // Ensure we don't divide by zero or get negative load due to
+        // overflow/timing glitches
+        if (total_diff > 0) {
+          float load_0 = 100.0f * (1.0f - ((float)idle_0_diff / total_diff));
+          float load_1 = 100.0f * (1.0f - ((float)idle_1_diff / total_diff));
+
+          // Clamp to 0-100 range
+          if (load_0 < 0)
+            load_0 = 0;
+          else if (load_0 > 100)
+            load_0 = 100;
+          if (load_1 < 0)
+            load_1 = 0;
+          else if (load_1 > 100)
+            load_1 = 100;
+
+          ESP_LOGI(TAG, "Core Load: Core 0: %.2f%%, Core 1: %.2f%%", load_0,
+                   load_1);
+        }
+      }
+
+      prev_idle_0 = idle_0;
+      prev_idle_1 = idle_1;
+      prev_total = current_total_time;
+    }
 
     // Watchdog check
     if (weighted_sum == 0) {
