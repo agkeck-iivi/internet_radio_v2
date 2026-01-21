@@ -321,6 +321,8 @@ static void data_throughput_task(void *pvParameters) {
 
 void app_main(void) {
   int initial_volume = INITIAL_VOLUME;
+  int unmuted_volume = INITIAL_VOLUME;
+  bool initial_mute = false;
   esp_log_level_set("*", ESP_LOG_DEBUG);
   // esp_log_level_set(TAG, ESP_LOG_DEBUG);
   // esp_log_level_set("HTTP_STREAM", ESP_LOG_DEBUG);
@@ -381,6 +383,25 @@ void app_main(void) {
     default:
       ESP_LOGE(TAG, "Error (%s) reading 'volume'!", esp_err_to_name(err));
     }
+
+    // Read mute state from NVS
+    ESP_LOGI(TAG, "Reading mute state from NVS");
+    uint8_t mute_from_nvs = 0; // default to unmuted
+    err = nvs_get_u8(nvs_handle, "mute_state", &mute_from_nvs);
+    if (err == ESP_OK) {
+      initial_mute = (mute_from_nvs != 0);
+      ESP_LOGI(TAG, "Successfully read mute_state = %d", (int)initial_mute);
+    } else if (err == ESP_ERR_NVS_NOT_FOUND) {
+      ESP_LOGI(TAG, "The value 'mute_state' is not initialized yet!");
+    } else {
+      ESP_LOGE(TAG, "Error (%s) reading 'mute_state'!", esp_err_to_name(err));
+    }
+
+    unmuted_volume = initial_volume;
+    if (initial_mute) {
+      initial_volume = 0;
+    }
+
     nvs_close(nvs_handle);
   }
 #if (ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0))
@@ -580,7 +601,7 @@ void app_main(void) {
 
   //  start encoder pulse counters
 
-  init_encoders(board_handle, initial_volume);
+  init_encoders(board_handle, initial_volume, initial_mute, unmuted_volume);
 
   while (1) {
     audio_event_iface_msg_t msg;

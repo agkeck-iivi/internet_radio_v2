@@ -109,6 +109,32 @@ static void save_volume_to_nvs(int volume) {
   nvs_close(nvs_handle);
 }
 
+static void save_mute_state_to_nvs(bool muted) {
+  nvs_handle_t nvs_handle;
+  esp_err_t err = nvs_open("storage", NVS_READWRITE, &nvs_handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Error (%s) opening NVS handle for writing mute state!",
+             esp_err_to_name(err));
+    return;
+  }
+
+  err = nvs_set_u8(nvs_handle, "mute_state", muted ? 1 : 0);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Error (%s) writing 'mute_state' to NVS!",
+             esp_err_to_name(err));
+  } else {
+    ESP_LOGD(TAG, "Saved mute_state = %d to NVS", muted);
+  }
+
+  err = nvs_commit(nvs_handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Error (%s) committing 'mute_state' to NVS!",
+             esp_err_to_name(err));
+  }
+
+  nvs_close(nvs_handle);
+}
+
 // update the volume by clamping to range 0-100.  The adjust parameter is used
 // to adapt the current pulse count to the clamped volume.  In this way one can
 // adjust well below 0 but after ajustment it only take a click to get back
@@ -147,6 +173,7 @@ void update_volume_pulse_counter(void *pvParameters) {
       if (is_muted) {
         is_muted = false;
         ESP_LOGI(TAG, "Unmuted by volume change");
+        save_mute_state_to_nvs(false);
       }
 
       counter->value = new_volume;
@@ -211,7 +238,7 @@ static void volume_press_task(void *pvParameters) {
           audio_hal_set_volume(g_volume_counter_ptr->board_handle->audio_hal,
                                0);
           update_volume_slider(0);
-          // We don't save mute state to NVS, so it always starts unmuted
+          save_mute_state_to_nvs(true);
         } else {
           ESP_LOGI(TAG, "Unmuting volume to %d", volume_before_mute);
           // Restore volume
@@ -225,6 +252,7 @@ static void volume_press_task(void *pvParameters) {
                                  volume_before_mute);
             update_volume_slider(volume_before_mute);
             save_volume_to_nvs(volume_before_mute);
+            save_mute_state_to_nvs(false);
           }
         }
       }
@@ -388,7 +416,10 @@ bool is_volume_switch_pressed(void) {
   return gpio_get_level(VOLUME_PRESS_GPIO) == 0;
 }
 
-void init_encoders(audio_board_handle_t board_handle, int initial_volume) {
+void init_encoders(audio_board_handle_t board_handle, int initial_volume,
+                   bool initial_mute, int unmuted_volume) {
+  is_muted = initial_mute;
+  volume_before_mute = unmuted_volume;
 
   // ESP_LOGI(TAG, "set glitch filter");
   static pcnt_glitch_filter_config_t filter_config = {
