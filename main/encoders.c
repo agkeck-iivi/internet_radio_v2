@@ -171,8 +171,25 @@ void update_volume_pulse_counter(void *pvParameters) {
     if (new_volume != counter->value) {
       // If muted and user changes volume, unmute first
       if (is_muted) {
+        // Calculate the 'delta' applied by the encoder
+        int delta = new_volume - counter->value;
+        // Restore based on previous volume plus the delta
+        new_volume = volume_before_mute + delta;
+
+        // Clamp restored volume to 0-100 range
+        if (new_volume < 0) {
+          new_volume = 0;
+        } else if (new_volume > 100) {
+          new_volume = 100;
+        }
+
+        // Correct the adjust value so that future 'new_volume' calculations
+        // from the hardware counter match this restored volume.
+        counter->adjust = new_volume - (count / 4 * counter->speed);
+
         is_muted = false;
-        ESP_LOGI(TAG, "Unmuted by volume change");
+        ESP_LOGI(TAG, "Unmuted by volume change to %d (restored from %d)",
+                 new_volume, volume_before_mute);
         save_mute_state_to_nvs(false);
       }
 
