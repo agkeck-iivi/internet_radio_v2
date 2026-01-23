@@ -65,7 +65,7 @@ rmt_channel_handle_t g_ir_tx_channel = NULL;
 
 volatile int g_bitrate_kbps = 0;
 // system monitor logging enable
-static bool g_enable_sys_monitor = false;
+static bool g_enable_sys_monitor = true;
 // Button Handles
 static EventGroupHandle_t wifi_event_group;
 const int WIFI_CONNECTED_BIT = BIT0;

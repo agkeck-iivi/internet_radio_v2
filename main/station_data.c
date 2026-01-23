@@ -39,6 +39,8 @@ static const default_station_t default_stations[] = {
     {"KWSB", "Gunnison", "https://kwsb.streamguys1.com/live", CODEC_TYPE_MP3},
     {"KFFP", "Portland", "http://listen.freeformportland.org:8000/stream",
      CODEC_TYPE_MP3}, // this is a 256K stream  it works sporadically
+     // new kffp steam: https://stream.freeformportland.org/listen/freeformportland/relay.mp3
+     // this new stream is still 256kbps but AzuraCast api reports that it is 128kbps.
     {"KBOO", "Portland", "https://live.kboo.fm:8443/high", CODEC_TYPE_MP3},
     {"KXLU", "Loyola Marymnt", "http://kxlu.streamguys1.com:80/kxlu-lo",
      CODEC_TYPE_AAC},
