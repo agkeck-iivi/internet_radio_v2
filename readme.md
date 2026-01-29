@@ -6,13 +6,17 @@
 * ES8388 audio board
   * both clock and data lines require low pass filters with caps close to es8388
 * 2 rotary encoders with push buttons and hardware debounce
-  * encoder 1: volume + mute
+  * encoder 1: volume + mute + hold down at boot to enter provisioning mode
   * encoder 2: station selection + display ip address + reboot
 
 * 1 IR LED
-* 1 OLED? display spi interface
+* 1 OLED display spi interface
 
 ### prototype
+
+### header wiring
+
+![internet radio version 2 header wiring](header_wiring.png)
 
 ![internet radio version 2 prototype](v2_prototype.jpg)
 
@@ -108,29 +112,37 @@ Phase 1: Solder the esp32 and es8388 boards with low pass filters and pullup res
 
 ## operation
 
-The radio manages its user interface primarily through two rotary encoders, each with an integrated push button.
+The radio's user interface is driven by two rotary encoders, each equipped with an integrated push button (switch).
 
-### Volume Encoder
+### Control Summary Table
 
-* **Rotation**: Adjusts the volume between 0 and 100.
-  * Changes are reflected immediately on the OLED volume slider.
-  * The volume level is saved to NVS and persists across reboots.
-  * Rotating the knob while muted will automatically unmute the device.
-* **Button Press (Single Click)**: Toggles **Mute**.
-  * Muting sets the volume to 0.
-  * Unmuting restores the volume to the previous level.
-* **Button Press (Double Click)**: Sends a **Bose ON/OFF** IR command (via the IR transmitter).
+| Control | Action | Function |
+| :--- | :--- | :--- |
+| **Volume Encoder** | Rotation | Adjust volume (0-100); Auto-unmutes if turned |
+| | Single Click | Toggle Mute/Unmute |
+| | Double Click | Send **Bose ON/OFF** IR command |
+| | **Hold at Boot** | **Force Reprovisioning** (Wipe Wi-Fi credentials) |
+| **Station Encoder** | Rotation | Scroll through stations; Selects after 2s inactivity |
+| | Short Press | Display **IP Address** (3 seconds) |
+| | Long Press (>1.5s) | **Reboot** device |
 
-### Station Encoder
+---
 
-* **Rotation**: detailed station selection.
-  * Turning the knob switches the display to the "Station Selection" screen.
-  * You can scroll through the available stations (wrapping around the list).
-  * **Selection**: Stop turning the knob to select a station. After **2 seconds** of inactivity, the radio will:
-        1. Switch to the selected station.
-        2. Begin streaming.
-        3. Return to the Home screen.
-* **Button Press (Short)**: Displays the device's **IP Address** on the screen for 5 seconds, then returns to Home.
-* **Button Press (Long > 1.5s)**: **Reboots** the device. A reboot message is displayed before the system restarts.
-* **Hold During Boot**: Forces **Reprovisioning**.
-  * If the volume button is held down while the device powers on, it will erase current Wi-Fi credentials and return to provisioning mode.
+### Detailed Usage
+
+#### Volume Encoder (Left)
+
+* **Rotation**: Sets the volume level between 0 and 100.
+  * The volume is saved to NVS and persists across reboots.
+  * If the device is muted, any rotation will automatically restore the previous volume plus or minus the rotation delta.
+* **Single Click**: Toggles the mute state. Muting sets output to 0 while remembering the previous level for restoration.
+* **Double Click**: Triggers the IR transmitter to send a power toggle command to the connected Bose system.
+* **Boot Action**: Holding this button during power-on or reset will trigger `wifi_prov_mgr_reset_provisioning()`, allowing you to connect a new Wi-Fi network via BLE.
+
+#### Station Encoder (Right)
+
+* **Rotation**: Navigates the station list.
+  * Turning the knob switches the display to the **Station Selection** screen.
+  * **Auto-Selection**: Once you stop turning, the radio waits for **2 seconds** before committing the change, switching the stream, and returning to the Home screen.
+* **Short Press**: Briefly switches the screen to show the current IP address. This is useful for accessing the web configuration interface.
+* **Long Press**: Holding for more than 1.5 seconds triggers an immediate system reboot. A "Rebooting" message will appear on the display as confirmation.
