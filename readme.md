@@ -18,11 +18,15 @@
 
 ![internet radio version 2 header wiring](header_wiring.png)
 
-![internet radio version 2 prototype](v2_prototype.jpg)
-
 ### schematic
 
 ![internet radio version 2 schematic](v2_schematic.png)
+
+### build
+
+![internet radio version 2 prototype](build_interior_1.jpg)
+![internet radio version 2 prototype](build_interior_2.jpg)
+![internet radio version 2 prototype](build_exterior_1.jpg)
 
 ## software
 
@@ -146,3 +150,8 @@ The radio's user interface is driven by two rotary encoders, each equipped with 
   * **Auto-Selection**: Once you stop turning, the radio waits for **2 seconds** before committing the change, switching the stream, and returning to the Home screen.
 * **Short Press**: Briefly switches the screen to show the current IP address. This is useful for accessing the web configuration interface.
 * **Long Press**: Holding for more than 1.5 seconds triggers an immediate system reboot. A "Rebooting" message will appear on the display as confirmation.
+
+## Bugs
+
+* 5v power does not work perfectly. On first power on after a period off,
+the system will not boot. If the 5v power is cycled once, it will work fine. A 10 uF decoupling capacitor was added across the 5v header but that didn't solve the issue.
