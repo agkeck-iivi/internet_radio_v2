@@ -113,10 +113,11 @@ where the codec enum uses these values:
 2: OGG
 3: FLAC
 
+For help finding stream URIs and codecs for your favorite stations, see the [Station Discovery Guide](station_discovery.md).
+
 ### web update to station data
 
 We provide a web interface to update the station data at <ESP32_IP_ADDRESS>/api/stations (or just <ESP_IP_ADDRESS> where there is a link to station data.)  From the web interface we can add, remove, and update station data as well a reorder the list of stations.  The station data is saved to the spiffs and a reboot will apply the changes.
-
 
 ## operation
 
