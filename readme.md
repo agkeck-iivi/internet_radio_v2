@@ -24,9 +24,9 @@
 
 ### build
 
-![internet radio version 2 prototype](build_interior_1.jpg)
-![internet radio version 2 prototype](build_interior_2.jpg)
-![internet radio version 2 prototype](build_exterior_1.jpg)
+![internet radio version 2 interior](build_interior_1.jpg)
+![internet radio version 2 interior](build_interior_2.jpg)
+![internet radio version 2 exterior](build_exterior_1.jpg)
 
 ## software
 
