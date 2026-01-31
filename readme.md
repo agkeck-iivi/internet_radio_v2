@@ -95,8 +95,16 @@ The bose IR protocal is stateful: the on/off button performs different functions
 
 Initial station data is stored in a constant array.  On first boot, if the spiffs is not initialized we create a default station json file based on the constant array.  Thereafter, on boot the spiffs should be found and the json file serves as the source of truth for station data.  We provide an API to load the station data from the json file and save the station data to the json file.
 
+To download the current stations:
+
 ```{bash}
-curl -X POST -H "Content-Type: application/json" -d '[{"call_sign":"TestRadio","origin":"Home","uri":"http://test.com","codec":1}]' http://<ESP32_IP_ADDRESS>/api/stations
+curl http://<ESP32_IP_ADDRESS>/api/stations -o stations.json
+```
+
+To update the stations:
+
+```{bash}
+curl -X POST -H "Content-Type: application/json" -d @stations.json http://<ESP32_IP_ADDRESS>/api/stations
 ```
 
 where the codec enum uses these values:
