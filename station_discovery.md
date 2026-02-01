@@ -15,6 +15,7 @@ The easiest way to find station information is to use curated directories that p
 
 * Go to [Radio-Browser.info](https://www.radio-browser.info/).
 * Search for the station name or call sign.
+* Click on the station in the list.
 * The results will clearly show the **Stream URL** (URI) and the **Codec** (MP3, AAC, etc.).
 * **Tip:** Look for URLs ending in `.mp3`, `.aac`, or `.pls`.
 
@@ -40,6 +41,8 @@ If a station only provides a web player and doesn't list a direct link, you can 
 ---
 
 ## AI-Assisted Discovery (Gemini Prompt)
+
+**warning:** this method doesn't seem to work right now.
 
 You can use an AI like Gemini to do the research for you. Use the following prompt template for the best results:
 

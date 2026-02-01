@@ -27,6 +27,7 @@
 ![internet radio version 2 interior](build_interior_1.jpg)
 ![internet radio version 2 interior](build_interior_2.jpg)
 ![internet radio version 2 exterior](build_exterior_1.jpg)
+![internet radio version 2 exterior](build_exterior_2.jpg)
 
 ## software
 
