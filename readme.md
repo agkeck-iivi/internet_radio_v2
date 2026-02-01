@@ -14,13 +14,18 @@
 
 ### prototype
 
+![breadboard development](breadboard_development.jpg)
+*Breadboard development*
+
 ### header wiring
 
-![internet radio version 2 header wiring](header_wiring.png)
+![header wiring](header_wiring.png)
+*Header wiring diagram*
 
 ### schematic
 
-![internet radio version 2 schematic](v2_schematic.png)
+![schematic](v2_schematic.png)
+*Schematic diagram*
 
 ### build
 
