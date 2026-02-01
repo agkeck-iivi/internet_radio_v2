@@ -24,10 +24,17 @@
 
 ### build
 
-![internet radio version 2 interior](build_interior_1.jpg)
-![internet radio version 2 interior](build_interior_2.jpg)
-![internet radio version 2 exterior](build_exterior_1.jpg)
-![internet radio version 2 exterior](build_exterior_2.jpg)
+![interior during build](build_interior_1.jpg)
+*Interior during build*
+
+![interior during build oblique](build_interior_2.jpg)
+*Interior during build oblique*
+
+![front panel of completed radio](build_exterior_1.jpg)
+*Front panel of completed radio*
+
+![back of completed radio](build_exterior_2.jpg)
+*Back of completed radio*
 
 ## software
 
