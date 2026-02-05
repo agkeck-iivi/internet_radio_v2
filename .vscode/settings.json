@@ -36,5 +36,6 @@
     "--background-index",
     "--query-driver=/home/agkeck/esp/esp-idf_v5_5/tools/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
     "--compile-commands-dir=/home/agkeck/project/mc_projects/esp32/internet_radio_v2/build"
-  ]
+  ],
+  "idf.currentSetup": "/home/agkeck/esp/v5.5.1/esp-idf"
 }
