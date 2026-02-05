@@ -172,4 +172,8 @@ The radio's user interface is driven by two rotary encoders, each equipped with 
 ## Bugs
 
 * 5v power does not work perfectly. On first power on after a period off,
-the system will not boot. If the 5v power is cycled once, it will work fine. A 10 uF decoupling capacitor was added across the 5v header but that didn't solve the issue.
+the system will not boot. If the 5v power is cycled once, it will work fine.
+  * A 10 uF decoupling capacitor was added across the 5v header but that didn't solve the issue.
+  * A 470 uF capacitor was added across the 5v header but that didn't solve the issue.
+  * A 10 uF capacitor was added to rst pin to ground but that didn't solve the issue.
+  * A 470 uF capacitor was added to rst pin to ground but that didn't solve the issue.
