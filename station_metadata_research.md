@@ -33,12 +33,19 @@ These stations rely on Spinitron for playlist management. We will scrape their p
 | **KOTO** | `https://spinitron.com/KOTO/` | Confirmed by user. |
 | **KBUT** | `https://spinitron.com/KBUT/` | Confirmed reachable. |
 | **WMBR** | `https://spinitron.com/WMBR/` | Confirmed reachable. |
-| **KSUT** | *Dynamic / TBD* | Direct URL is elusive (likely `KSUTFM` or `Tribal`). **Strategy**: Scrape `https://www.ksut.org/current-playlist` to find the correct `spinitron.com` link dynamically at runtime or during config. |
+| **KALX** | `https://spinitron.com/KALX/` | Confirmed reachable. |
+| **WPRB** | `https://spinitron.com/WPRB/` | Confirmed reachable. |
+| **KFFP** | `https://spinitron.com/KFFP/` | Confirmed reachable. |
+| **KBOO** | `https://spinitron.com/KBOO/` | Confirmed reachable. |
+| **KRCL** | `https://spinitron.com/KRCL/` | Confirmed reachable. |
+| **KSUT** | `https://spinitron.com/ksutfourcorners/` | Confirmed reachable (via user suggestion). |
 
 ### 3. StreamTheWorld & Generic
 
-* **StreamTheWorld**: KBUT and KOTO are now handled by **Spinitron** (see above), solving the "stub" XML issue. KUFM likely follows this pattern or uses the standard driver.
-* **Generic Stations** (WPRB, KFFP, KBOO, KALX, WFUV, KRCL): Continue to use `status-json.xsl`. If that fails, fallback to standard ICY Metadata (audio stream headers) which requires no extra HTTP calls.
+* **StreamTheWorld**: KBUT and KOTO are now handled by **Spinitron** (see above). KUFM likely follows this pattern or uses the standard driver.
+* **Generic Stations** (WFUV, KHEN, KWSB): **Standard Driver (ICY Metadata)**.
+  * *Research Note*: Scraping of homepages (`wfuv.org`, `khen.org`, `kwsb.org`) for Spinitron links yielded negative results.
+  * **Strategy**: Attempt `status-json.xsl`. If unavailable, use in-stream ICY metadata (native ESP-ADF feature).
 
 ## Implementation Plan
 
@@ -63,6 +70,7 @@ typedef struct {
 ### 2. Spinitron Scraper Logic
 
 Since Spinitron pages are HTML, we need a lightweight scraper:
+
 * HTTP GET the `meta_uri`.
 * Search for specific tokens: `<tr class="current-song">` or `data-current-song="`.
 * Extract text between tags.
