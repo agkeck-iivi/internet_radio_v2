@@ -1,5 +1,0 @@
-E (23533) AUDIO_ELEMENT: [http] AEL_STATUS_ERROR_OPEN,-1
-W (23543) AUDIO_ELEMENT: IN-[codec] AEL_IO_ABORT
-
-This is normal when changing stations:
-W (23419) AUDIO_ELEMENT: OUT-[codec] AEL_IO_ABORT
