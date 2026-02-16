@@ -73,4 +73,7 @@ else()
 list(APPEND COMPONENT_PRIV_REQUIRES esp_adc_cal)
 endif()
 
-register_component()
+idf_component_register(SRCS ${COMPONENT_SRCS}
+                       INCLUDE_DIRS ${COMPONENT_ADD_INCLUDEDIRS}
+                       REQUIRES ${COMPONENT_REQUIRES}
+                       PRIV_REQUIRES ${COMPONENT_PRIV_REQUIRES})

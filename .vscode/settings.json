@@ -29,7 +29,8 @@
     "board/esp32s3-builtin.cfg"
   ],
   "idf.customExtraVars": {
-    "IDF_TARGET": "esp32s3"
+    "IDF_TARGET": "esp32s3",
+    "ADF_PATH": "/home/agkeck/.espressif/v5.4.3/esp-idf/tools/esp-adf"
   },
   "clangd.path": "/home/agkeck/esp/esp-idf_v5_5/tools/tools/esp-clang/esp-19.1.2_20250312/esp-clang/bin/clangd",
   "clangd.arguments": [
@@ -37,5 +38,5 @@
     "--query-driver=/home/agkeck/esp/esp-idf_v5_5/tools/tools/xtensa-esp-elf/esp-14.2.0_20241119/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc",
     "--compile-commands-dir=/home/agkeck/project/mc_projects/esp32/internet_radio_v2/build"
   ],
-  "idf.currentSetup": "/home/agkeck/esp/v5.5.1/esp-idf"
+  "idf.currentSetup": "/home/agkeck/.espressif/v5.4.3/esp-idf"
 }
