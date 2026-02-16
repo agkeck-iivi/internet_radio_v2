@@ -177,3 +177,5 @@ the system will not boot. If the 5v power is cycled once, it will work fine.
   * A 470 uF capacitor was added across the 5v header but that didn't solve the issue.
   * A 10 uF capacitor was added to rst pin to ground but that didn't solve the issue.
   * A 470 uF capacitor was added to rst pin to ground but that didn't solve the issue.
+
+  * **Solved** by adding a 10K pullup resistor from GPIO 0 to 3.3v.  This causes the radio to reliably boot into stored application when running on external 5v supply.

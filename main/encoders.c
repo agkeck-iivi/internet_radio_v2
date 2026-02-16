@@ -565,5 +565,5 @@ void init_encoders(audio_board_handle_t board_handle, int initial_volume,
   xTaskCreate(update_station_select_pulse_counter,
               "update_station_select_pulse_counter", 4 * 1024,
               g_station_counter_ptr, 5, NULL);
-  xTaskCreate(station_press_task, "station_press_task", 2048, NULL, 5, NULL);
+  xTaskCreate(station_press_task, "station_press_task", 3 * 1024, NULL, 5, NULL);
 }
